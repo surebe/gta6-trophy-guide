@@ -1,4 +1,4 @@
-// trophy-data.js — dataset access for the Leonida Ledger v2.
+// trophy-data.js — dataset access for the Leonida Ledger.
 //
 // Loads app/data/trophies.json (the official 55-trophy list, our own guides,
 // per-step source citations and the recorded source disputes), and provides

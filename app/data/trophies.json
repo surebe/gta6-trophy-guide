@@ -45,7 +45,7 @@
         { "text": "It is one of 12 story trophies — 1 Gold and 11 Bronze", "refs": [5, 7, 8] },
         { "text": "The story runs five chapters over roughly 60–80 hours", "refs": [1, 2] },
         { "text": "Keep a manual save at each chapter boundary — there is no mission replay", "refs": [1, 4] },
-        { "text": "Gone Fishing is one of the first missions of Chapter 1", "refs": [10] },
+        { "text": "Gone Fishing sits at the very start of Chapter 1, ahead of the chapter's other missions", "refs": [10] },
         { "text": "The credits unlock the cheats list — keep cheats off this save entirely", "refs": [8, 11] }
       ] },
     { "id": 3, "name": "Paradise Lost", "description": "Complete Chapter 1.", "grade": "bronze", "hidden": true, "missable": false, "kind": "story", "count": null, "stage": 1,
@@ -578,7 +578,7 @@
       ],
       "disputes": [
         { "topic": "Where is Mile Zero Air Station?",
-          "a": { "claim": "On the southwest island of Mariana County. That is the placement this guide carried in its previous edition, following PowerPyx and GTABase.", "refs": [1, 2] },
+          "a": { "claim": "On the southwest island of Mariana County. PowerPyx and GTABase place Mile Zero Air Station there, and their method directions are written for that island.", "refs": [1, 2] },
           "b": { "claim": "On Goose Key, in the Keys. OutputLag places Mile Zero Air Station on Goose Key at the bottom of the Keys, with the tanks parked on its south side; GTA Zone names Mile Zero as the tank source without the Mariana County placement.", "refs": [8, 10] },
           "call": "Our call: follow Goose Key. Two of the guides read for this edition place the base in the Keys, and the tank row on the base's south side is the landmark that matters." }
       ] },

@@ -1,4 +1,4 @@
-/* Leonida Ledger v2 — a dense, ledger-like dark theme: ink-blue panels,
+/* Leonida Ledger — a dense, ledger-like dark theme: ink-blue panels,
    parchment text, one gold accent, and PlayStation grade colours. Built for
    scanning: small type, tight rows, everything a judge needs above the fold. */
 
@@ -190,7 +190,7 @@ a { color: var(--teal); }
 .counter-readout strong { font-size: 15px; }
 .counter-readout span { color: var(--muted); font-size: 11px; }
 .guide-text { margin: 0 0 4px; font-size: 12.4px; line-height: 1.36; }
-.detail-subhead { font-size: 13px; margin: 4px 0 1px; color: var(--gold); text-transform: uppercase; letter-spacing: .6px; font-size: 11.5px; }
+.detail-subhead { margin: 4px 0 1px; color: var(--gold); text-transform: uppercase; letter-spacing: .6px; font-size: 11.5px; }
 .step-list { margin: 0; padding-left: 19px; display: flex; flex-direction: column; gap: 1px; font-size: 12.3px; line-height: 1.35; }
 .ref-chip { background: none; border: none; color: var(--teal); font-size: 11px; padding: 0 1px; font-weight: 650; }
 .ref-chip:hover { text-decoration: underline; }

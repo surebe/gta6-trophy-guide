@@ -1,4 +1,4 @@
-// main.js — boots the Leonida Ledger v2: loads the dataset, restores saved
+// main.js — boots the Leonida Ledger: loads the dataset, restores saved
 // progress, wires the toolbar and the four tabs (Tracker, Roadmap,
 // Missables, Sources), and applies the URL parameters used to stage views
 // (?tab=roadmap|missables|sources, ?trophy=<id>, ?sample=1, ?shield=0,
