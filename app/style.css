@@ -23,12 +23,14 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html { scrollbar-color: var(--line) var(--bg); }
 
 body {
   margin: 0 auto;
   max-width: 1240px;
-  padding: 18px 20px 28px;
+  padding: 12px 20px 28px;
   background:
     radial-gradient(900px 420px at 85% -80px, rgba(255, 94, 138, 0.16), transparent 60%),
     radial-gradient(800px 380px at 8% -60px, rgba(45, 212, 191, 0.12), transparent 60%),
@@ -55,13 +57,13 @@ a { color: var(--teal); }
 
 .brand { display: flex; align-items: center; gap: 14px; }
 
-.brand-mark { width: 52px; height: 52px; flex: none; }
+.brand-mark { width: 44px; height: 44px; flex: none; }
 .mark-sun { fill: var(--amber); }
 .mark-line { fill: var(--pink); opacity: 0.85; }
 .mark-palm { fill: none; stroke: var(--teal); stroke-width: 2.4; stroke-linecap: round; }
 
 .brand-text h1 {
-  font-size: 30px;
+  font-size: 26px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   background: linear-gradient(92deg, var(--pink) 0%, var(--amber) 55%, var(--teal) 110%);
@@ -96,7 +98,7 @@ a { color: var(--teal); }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 10px 13px;
 }
 
 .stat-block h3 {
@@ -107,7 +109,7 @@ a { color: var(--teal); }
   margin-bottom: 8px;
 }
 
-.stat-big { font-size: 34px; font-weight: 800; color: var(--teal); line-height: 1; }
+.stat-big { font-size: 29px; font-weight: 800; color: var(--teal); line-height: 1; }
 .stat-caption { color: var(--muted); font-size: 12.5px; margin: 4px 0 6px; }
 
 .stat-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
@@ -217,7 +219,7 @@ a { color: var(--teal); }
   border: 1px solid var(--line);
   border-left: 4px solid var(--line);
   border-radius: var(--radius);
-  padding: 11px 13px;
+  padding: 9px 12px;
   cursor: pointer;
 }
 .card:hover { border-color: var(--muted); }
