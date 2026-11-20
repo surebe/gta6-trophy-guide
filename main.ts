@@ -1,36 +1,81 @@
-// A working gta6-trophy-guide-01 entry (Node 22, standard library only): the guide is this directory's app/ folder,
-// plain static files a browser opens at app/index.html (ES modules, CSS, no build step), offline: it loads nothing
-// over the network, and its trophy list and guides are app/data/trophies.json. The program hands it in: it copies app/
-// and screenshots/ from beside this file to /output and writes /output/dossier.json, the summary the judge reads (your
-// screenshots, the first load's files and bytes, and your source), with the vendored make.fun library. Leave
-// vendor/makefun-frontend.ts as it is: the scorer requires dossier.json to be byte for byte what its own copy writes.
+// Leonida Ledger — entry point for the gta6-trophy-guide-01 submission.
 //
-// Only the plumbing, not a winner: a plain checklist of the 55 trophies with a one-line hint each. Write a real guide
-// for every trophy in your own words, a roadmap to the platinum, filters and a spoiler setting in app/, put 3 or 4 PNG
-// or JPEG screenshots of it in screenshots/ (the first by name is the cover; shots.json says which views this
-// starter's were taken of), and run it.
+// The guide itself is the static web app in app/ (plain HTML, CSS and ES
+// modules with no build step; it runs fully offline in a desktop browser).
+// This program is the hand-in step: it first validates the trophy dataset
+// the app ships, then copies app/ and screenshots/ into the output
+// directory and writes dossier.json there with the vendored make.fun
+// frontend library, byte for byte as the scorer expects.
 //
-// Serve it locally with `node serve.ts`, then open http://localhost:8080.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
+// Run it the way the grader does, or locally with an output override:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
 
-const here = fileURLToPath(new URL('.', import.meta.url));
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const repoRoot = fileURLToPath(new URL('.', import.meta.url));
+const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-mkdirSync(out, { recursive: true });
-cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
-mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+// The dataset contract the guide is judged against: the official list has
+// 55 trophies — 1 platinum, 2 gold, 6 silver, 46 bronze — and every trophy
+// must carry a non-empty guide of our own.
+const EXPECTED_TOTAL = 55;
+const EXPECTED_GRADES = { platinum: 1, gold: 2, silver: 6, bronze: 46 };
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files and directories in app/ or
-// 48 MiB of app files: app/ counts beside /output's own 1000-entry cap, its screenshots/ and dossier.json).
-writeFileSync(
-  join(out, 'dossier.json'),
-  buildDossier(out, { text_max_bytes: 163840, screenshots: { max: 4, max_bytes: 262144 }, app_max_files: 993, app_max_bytes: 50331648 }),
-);
+function validateTrophyDataset() {
+  const datasetPath = join(repoRoot, 'app', 'data', 'trophies.json');
+  const dataset = JSON.parse(readFileSync(datasetPath, 'utf8'));
+  const trophies = dataset.trophies;
+  if (!Array.isArray(trophies) || trophies.length !== EXPECTED_TOTAL) {
+    throw new Error(`trophies.json must list ${EXPECTED_TOTAL} trophies, found ${trophies?.length}`);
+  }
+  const gradeCounts = {};
+  for (const trophy of trophies) {
+    gradeCounts[trophy.grade] = (gradeCounts[trophy.grade] ?? 0) + 1;
+    if (typeof trophy.name !== 'string' || trophy.name.trim() === '') {
+      throw new Error(`trophy ${trophy.id} is missing its official name`);
+    }
+    if (typeof trophy.guide !== 'string' || trophy.guide.trim() === '') {
+      throw new Error(`trophy ${trophy.id} (${trophy.name}) has an empty guide`);
+    }
+  }
+  for (const [grade, expected] of Object.entries(EXPECTED_GRADES)) {
+    if (gradeCounts[grade] !== expected) {
+      throw new Error(`expected ${expected} ${grade} trophies, found ${gradeCounts[grade] ?? 0}`);
+    }
+  }
+  const hidden = trophies.filter((trophy) => trophy.hidden).length;
+  const missable = trophies.filter((trophy) => trophy.missable).length;
+  console.log(
+    `Leonida Ledger dataset OK: ${trophies.length} trophies ` +
+      `(${EXPECTED_GRADES.platinum} platinum, ${EXPECTED_GRADES.gold} gold, ` +
+      `${EXPECTED_GRADES.silver} silver, ${EXPECTED_GRADES.bronze} bronze), ` +
+      `${hidden} hidden, ${missable} missable, every guide present.`,
+  );
+}
+
+function handIn() {
+  mkdirSync(outputDir, { recursive: true });
+  cpSync(join(repoRoot, 'app'), join(outputDir, 'app'), { recursive: true });
+  mkdirSync(join(outputDir, 'screenshots'), { recursive: true });
+  const screenshotsDir = join(repoRoot, 'screenshots');
+  if (existsSync(screenshotsDir)) {
+    cpSync(screenshotsDir, join(outputDir, 'screenshots'), { recursive: true });
+  }
+  // The scorer's caps for this bounty: at most 4 screenshots of 256 KiB,
+  // at most 993 files and 48 MiB under app/, and 160 KiB of source text in
+  // the dossier the judge reads.
+  const dossier = buildDossier(outputDir, {
+    text_max_bytes: 163840,
+    screenshots: { max: 4, max_bytes: 262144 },
+    app_max_files: 993,
+    app_max_bytes: 50331648,
+  });
+  writeFileSync(join(outputDir, 'dossier.json'), dossier);
+  console.log(`Handed in to ${outputDir}: app/, screenshots/ and dossier.json (${dossier.length} bytes).`);
+}
+
+validateTrophyDataset();
+handIn();

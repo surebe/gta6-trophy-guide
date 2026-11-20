@@ -3,23 +3,99 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GTA VI trophy checklist</title>
+<title>Leonida Ledger — GTA VI Trophy Guide &amp; Tracker</title>
+<meta name="description" content="An offline guide and tracker for all 55 Grand Theft Auto VI PlayStation 5 trophies: cited guides, a seven-stage roadmap to the Platinum, missable alerts, spoiler protection and saved progress.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <h1>GTA VI trophy checklist</h1>
-  <p id="progress">0 of 55 earned</p>
+<header class="site-header">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <circle cx="24" cy="26" r="13" class="mark-sun"/>
+      <rect x="4" y="24" width="40" height="2.6" class="mark-line"/>
+      <rect x="4" y="29" width="40" height="2.6" class="mark-line"/>
+      <rect x="4" y="34" width="40" height="2.6" class="mark-line"/>
+      <path d="M24 39c0-6 0-9 1-13M24 26c-3-4-7-5-10-4 2 3 6 5 10 4zm0 0c1-5 4-8 8-9 0 4-3 8-8 9zm0 0c-1-5-4-8-8-9 0 4 3 8 8 9z" class="mark-palm"/>
+    </svg>
+    <div class="brand-text">
+      <h1>Leonida Ledger</h1>
+      <p class="brand-sub">GTA VI Trophy Guide &amp; Tracker — all 55 PlayStation 5 trophies, offline</p>
+    </div>
+  </div>
+  <div id="headerStats" class="header-stats">Loading the ledger…</div>
 </header>
-<div class="controls">
-  <label>Grade <select id="grade"><option value="all">All</option><option value="platinum">Platinum</option><option value="gold">Gold</option><option value="silver">Silver</option><option value="bronze">Bronze</option></select></label>
-  <button id="export" type="button">Export progress</button>
-  <label class="import">Import progress <input id="import" type="file" accept="application/json"></label>
-</div>
-<table>
-  <thead><tr><th>Earned</th><th>Trophy</th><th>Grade</th><th>How to get it</th></tr></thead>
-  <tbody id="rows"></tbody>
-</table>
-<script type="module" src="app.js"></script>
+
+<section id="statsPanel" class="stats-panel" aria-label="Progress statistics"></section>
+
+<section class="toolbar" aria-label="Tracker controls">
+  <div class="toolbar-row">
+    <label class="search-box">
+      <span class="search-label">Search</span>
+      <input id="searchInput" type="search" placeholder="Search trophies, missions, activities…" autocomplete="off">
+    </label>
+    <div class="view-toggle" role="group" aria-label="View">
+      <button id="viewListBtn" type="button" class="chip-btn is-active">Checklist</button>
+      <button id="viewRoadmapBtn" type="button" class="chip-btn">Roadmap</button>
+    </div>
+  </div>
+  <div class="toolbar-row">
+    <div id="kindChips" class="chip-row" role="group" aria-label="Filter by kind"></div>
+    <div id="gradeChips" class="chip-row" role="group" aria-label="Filter by grade"></div>
+  </div>
+  <div class="toolbar-row">
+    <label class="select-box">Status
+      <select id="statusSelect">
+        <option value="all">All trophies</option>
+        <option value="earned">Earned</option>
+        <option value="unearned">Not earned</option>
+      </select>
+    </label>
+    <label class="select-box">Sort
+      <select id="sortSelect">
+        <option value="list">List order</option>
+        <option value="grade">Grade</option>
+        <option value="name">Name A–Z</option>
+        <option value="progress">Counter progress</option>
+      </select>
+    </label>
+    <label class="toggle-box">
+      <input id="spoilerToggle" type="checkbox">
+      <span>Spoiler protection (hide story trophies)</span>
+    </label>
+    <label class="toggle-box">
+      <input id="revealToggle" type="checkbox">
+      <span>Reveal hidden trophies</span>
+    </label>
+    <div class="toolbar-actions">
+      <button id="sampleBtn" type="button" class="btn">Load sample progress</button>
+      <button id="exportBtn" type="button" class="btn">Export</button>
+      <button id="importBtn" type="button" class="btn">Import</button>
+      <input id="importFile" type="file" accept="application/json" hidden>
+      <button id="resetBtn" type="button" class="btn btn-danger">Reset</button>
+    </div>
+  </div>
+</section>
+
+<p id="resultCount" class="result-count"></p>
+
+<main>
+  <div id="listLayout" class="layout">
+    <section id="checklist" class="checklist" aria-label="Trophy checklist"></section>
+    <aside id="detail" class="detail" aria-label="Trophy guide"></aside>
+  </div>
+  <section id="roadmap" class="roadmap" aria-label="Roadmap to the Platinum" hidden></section>
+</main>
+
+<footer class="site-footer">
+  <p><strong>Leonida Ledger</strong> is a fan-made, fully offline tracker. Trophy names, descriptions and grades are the official PlayStation 5 list for Grand Theft Auto VI; every guide here is written for this app and cites its sources:
+    <a href="https://www.exophase.com/game/grand-theft-auto-vi-psn/trophies/" target="_blank" rel="noopener noreferrer">Exophase</a> ·
+    <a href="https://www.gtabase.com/articles/gta-6/gta-6-achievements-trophies-list-ps5-xbox-series" target="_blank" rel="noopener noreferrer">GTABase</a> ·
+    <a href="https://egamers.io/gta-6-trophy-list-all-55-trophies-and-achievements-plus-the-hardest-ones/" target="_blank" rel="noopener noreferrer">EGamers</a> ·
+    <a href="https://insider-gaming.com/complete-gta-6-trophy-list-how-to-get-all-trophies-achievements/" target="_blank" rel="noopener noreferrer">Insider Gaming</a> ·
+    <a href="https://howtovideogame.com/gta-6-trophies/" target="_blank" rel="noopener noreferrer">howtovideogame</a>.
+    Progress is saved only in your browser (localStorage) — export it to keep a backup. No network is needed or used.</p>
+</footer>
+
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
