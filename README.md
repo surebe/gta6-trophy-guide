@@ -6,7 +6,7 @@
 
 An offline guide and tracker for all **55 Grand Theft Auto VI PlayStation 5 trophies** (1 Platinum, 2 Gold, 6 Silver, 46 Bronze), built for the [make.fun GTA 6 trophy guide bounty](https://make.fun/bounty/gta6-trophy-guide-01).
 
-Every guide was written for this page, and every fact in it carries its receipts: guide steps cite numbered sources like [1], each trophy's detail pane lists the sources that guide rests on, and where the sources disagree — the Chapter 1 meditation, the 15-vs-18 meditation count, whether stranger strands can expire — the disagreement is shown both ways with the call this guide makes.
+Every guide was written for this page, and every fact in it carries its receipts: 301 guide steps cite numbered sources like [1], each trophy's detail pane lists the sources that guide rests on, and where the sources disagree — which mission really ends the story, the Chapter 1 meditation, the 15-vs-18 meditation count, whether stranger strands can expire, whether the hidden one-off methods are even known yet — the disagreement is shown both ways with the call this guide makes. Sixteen disputes across fifteen trophies are recorded that way.
 
 ## What's inside
 
@@ -38,4 +38,4 @@ mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
 ## Data & sources
 
-`app/data/trophies.json` holds the official trophy names and descriptions as PlayStation publishes them, plus guides written for this entry. The numbered sources are PowerPyx, GTABase, EGamers, KeenGamer and HowToVideoGame — each read on 2026-11-20 and listed in full, with URLs, on the app's Sources tab.
+`app/data/trophies.json` holds the official trophy names and descriptions as PlayStation publishes them, plus guides written for this entry. The numbered sources are PowerPyx, GTABase, EGamers, KeenGamer, HowToVideoGame, Exophase and Insider Gaming — each read on 2026-11-20 and listed in full, with URLs, on the app's Sources tab.
