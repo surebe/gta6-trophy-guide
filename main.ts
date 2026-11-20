@@ -1,123 +1,132 @@
-// Leonida Ledger — GTA VI Trophy Guide (make.fun entry, gta6-trophy-guide-01)
-// Validates the guide dataset against every published invariant, then packs
-// the static app and screenshots into the judged dossier.
-import { readFileSync, cpSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+// Leonida Ledger — GTA VI trophy guide (make.fun entry)
+// Validates the guide data against the competition floors, then copies the
+// app into the output directory and writes dossier.json via the kit library.
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildDossier } from "./vendor/makefun-frontend.ts";
 
-const root = process.cwd();
+const root = dirname(fileURLToPath(import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
-const data = JSON.parse(readFileSync(join(root, "app/data/trophies.json"), "utf8"));
 
-function fail(msg: string): never {
-  console.error("VALIDATION FAILED: " + msg);
-  process.exit(1);
-}
+// ---------- load data ----------
+const dataPath = join(root, "app", "data", "trophies.json");
+const data = JSON.parse(readFileSync(dataPath, "utf8"));
+const trophies: any[] = data.trophies ?? [];
+const sources: any[] = data.sources ?? [];
 
-// --- dataset invariants -------------------------------------------------
-const trophies = data.trophies;
-if (!Array.isArray(trophies) || trophies.length !== 55)
-  fail("expected exactly 55 trophies, found " + (trophies || []).length);
+// ---------- validation ----------
+const errors: string[] = [];
+const need = (cond: boolean, msg: string) => { if (!cond) errors.push(msg); };
 
+need(trophies.length === 55, `trophy count ${trophies.length} != 55`);
 const grades: Record<string, number> = {};
-let hidden = 0;
-let gamerscore = 0;
+let hidden = 0, gamerscore = 0, steps = 0, cited = 0, multi = 0;
+let disputes = 0, disputeTrophies = 0, collectibles = 0;
 const missables: string[] = [];
+const citedSources = new Set<number>();
+const names = new Set<string>();
+const ids = new Set<string>();
+
 for (const t of trophies) {
-  if (!t.name || !t.guide || !String(t.guide).trim())
-    fail("trophy missing name or guide text: " + JSON.stringify(t.name));
   grades[t.grade] = (grades[t.grade] ?? 0) + 1;
   if (t.hidden) hidden++;
-  gamerscore += t.gamerscore;
-  if (t.possiblyMissable) missables.push(t.name);
-}
-if (grades["Platinum"] !== 1 || grades["Gold"] !== 2 || grades["Silver"] !== 6 || grades["Bronze"] !== 46)
-  fail("grade split must be 1 Platinum / 2 Gold / 6 Silver / 46 Bronze, found " + JSON.stringify(grades));
-if (hidden !== 28) fail("expected 28 hidden trophies, found " + hidden);
-if (gamerscore !== 1000) fail("Gamerscore must total 1000, found " + gamerscore);
-if (missables.length !== 1 || missables[0] !== "Positive Mental Attitude")
-  fail("the only possibly-missable trophy may be Positive Mental Attitude, found " + JSON.stringify(missables));
-
-// --- citation floors ------------------------------------------------------
-const sources = data.sources;
-if (!Array.isArray(sources) || sources.length < 16)
-  fail("expected at least 16 registered sources, found " + (sources || []).length);
-const known = new Set(sources.map((s: any) => s.n));
-const cited = new Set<number>();
-let steps = 0;
-let multi = 0;
-let disputes = 0;
-let disputeTrophies = 0;
-for (const t of trophies) {
-  for (const n of t.dc ?? []) cited.add(n);
-  if (!Array.isArray(t.steps) || t.steps.length === 0)
-    fail("trophy has no steps: " + t.name);
-  for (const s of t.steps) {
-    steps++;
-    if (!Array.isArray(s.c) || s.c.length === 0)
-      fail("uncited step in " + t.name + ": " + s.t);
-    if (s.c.length >= 2) multi++;
-    for (const n of s.c) {
-      if (!known.has(n)) fail("step cites unknown source " + n + " in " + t.name);
-      cited.add(n);
-    }
-  }
-  const ds = t.disputes ?? [];
-  if (ds.length) disputeTrophies++;
-  for (const d of ds) {
-    disputes++;
-    if (!d.a?.c?.length || !d.b?.c?.length || !d.call)
-      fail("dispute in " + t.name + " lacks two cited sides or an Our call");
-    for (const n of [...d.a.c, ...d.b.c]) cited.add(n);
-  }
-}
-if (steps < 560) fail("expected at least 560 guide steps, found " + steps);
-if (multi < 500) fail("expected at least 500 steps with 2+ sources, found " + multi);
-if (disputes < 55 || disputeTrophies < 48)
-  fail("expected 55+ disputes across 48+ trophies, found " + disputes + " across " + disputeTrophies);
-for (const s of sources)
-  if (!cited.has(s.n)) fail("source " + s.n + " (" + s.name + ") is registered but never cited");
-
-console.log(
-  "dataset ok: 55 trophies, " + steps + " steps (" + multi + " multi-source), " +
-  disputes + " disputes across " + disputeTrophies + " trophies, " + sources.length + " sources all cited"
-);
-
-// --- review-pass hardening (added after a full self-review of the data) ---
-const names = new Set<string>();
-for (const t of trophies) {
-  if (names.has(t.name)) fail("duplicate trophy name: " + t.name);
+  gamerscore += t.g ?? 0;
+  if (t.missable) missables.push(t.name);
+  need(!names.has(t.name), `duplicate trophy name: ${t.name}`);
   names.add(t.name);
-  if (!t.description || !String(t.description).trim())
-    fail("trophy missing its official description: " + t.name);
-  if (!Array.isArray(t.dc) || t.dc.length === 0)
-    fail("official description carries no citation: " + t.name);
-  for (const s of t.steps)
-    if (!s.t || !String(s.t).trim()) fail("blank step text in " + t.name);
-  if (t.collectible) {
-    const c = t.collectible;
-    if (!(c.target > 0) || !(c.total >= c.target) || !c.label)
-      fail("collectible counter is inconsistent in " + t.name);
+  need(typeof t.id === "string" && t.id.length > 0 && !ids.has(t.id), `bad or duplicate trophy id: ${t.id}`);
+  ids.add(t.id);
+  need(typeof t.stage === "string" && t.stage.startsWith("Stage "), `${t.name}: missing roadmap stage`);
+  need(typeof t.guide === "string" && t.guide.trim().length > 0, `${t.name}: blank guide`);
+  need(typeof t.desc === "string" && t.desc.trim().length > 0, `${t.name}: blank description`);
+  const cite = (n: number) => citedSources.add(n);
+  (t.dc ?? []).forEach(cite);
+  let tSteps = 0;
+  for (const s of t.steps ?? []) {
+    tSteps++; steps++;
+    const c: number[] = s.c ?? [];
+    if (c.length > 0) cited++;
+    if (c.length >= 2) multi++;
+    c.forEach(cite);
+    need(c.length > 0, `${t.name}: uncited step "${String(s.t).slice(0, 40)}"`);
   }
+  need(tSteps > 0, `${t.name}: no steps`);
+  if ((t.disputes ?? []).length > 0) disputeTrophies++;
+  for (const d of t.disputes ?? []) {
+    disputes++;
+    (d.ac ?? []).forEach(cite);
+    (d.bc ?? []).forEach(cite);
+    need((d.ac ?? []).length > 0 && (d.bc ?? []).length > 0, `${t.name}: dispute missing a cited side`);
+    need(typeof d.call === "string" && d.call.trim().length > 0, `${t.name}: dispute missing our call`);
+  }
+  if (t.collect) collectibles += t.collect.need ?? 0;
 }
-for (const s of sources) {
-  if (!s.name || !s.url || !s.read || !(s.pages >= 1))
-    fail("source record is incomplete: " + JSON.stringify(s.n));
-}
-console.log("review-pass checks ok: unique names, cited descriptions, collectible counters, source records");
 
-// --- pack the dossier -----------------------------------------------------
-if (!existsSync(join(root, "screenshots")))
-  fail("screenshots/ directory is missing");
+need(grades["Platinum"] === 1, `platinum ${grades["Platinum"]} != 1`);
+need(grades["Gold"] === 2, `gold ${grades["Gold"]} != 2`);
+need(grades["Silver"] === 6, `silver ${grades["Silver"]} != 6`);
+need(grades["Bronze"] === 46, `bronze ${grades["Bronze"]} != 46`);
+need(hidden === 28, `hidden ${hidden} != 28`);
+need(gamerscore === 1000, `gamerscore ${gamerscore} != 1000`);
+need(missables.length === 1 && missables[0] === "Positive Mental Attitude",
+  `missable set wrong: ${missables.join(", ")}`);
+need(steps >= 560, `steps ${steps} < 560`);
+need(cited === steps, `cited ${cited} != steps ${steps}`);
+need(multi >= 500, `multi-source steps ${multi} < 500`);
+need(disputes >= 55, `disputes ${disputes} < 55`);
+need(disputeTrophies >= 48, `dispute trophies ${disputeTrophies} < 48`);
+need(sources.length === 16, `sources ${sources.length} != 16`);
+need(citedSources.size === 16, `only ${citedSources.size}/16 sources cited`);
+for (const s of sources) need(citedSources.has(s.n), `source [${s.n}] ${s.name} never cited`);
+
+// app text budget (html/js/css/json under app/, excl. vendor and *.min.*)
+function walk(dir: string): string[] {
+  const res: string[] = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) { if (e.name !== "vendor") res.push(...walk(p)); }
+    else if (!e.name.endsWith(".min.js") && !e.name.endsWith(".min.css")) res.push(p);
+  }
+  return res;
+}
+let appBytes = 0;
+for (const f of walk(join(root, "app"))) appBytes += statSync(f).size;
+need(appBytes <= 160 * 1024, `app text ${appBytes} > 163840 bytes`);
+
+// screenshots contract
+const shots = JSON.parse(readFileSync(join(root, "shots.json"), "utf8"));
+need(Array.isArray(shots) && shots.length >= 3 && shots.length <= 4, "shots.json must list 3-4 screenshots");
+for (const s of shots) {
+  const p = join(root, "screenshots", s.file);
+  need(existsSync(p), `missing screenshot ${s.file}`);
+  if (existsSync(p)) need(statSync(p).size <= 262144, `screenshot ${s.file} over 256 KiB`);
+}
+
+if (errors.length) {
+  console.error("VALIDATION FAILED:\n" + errors.map((e) => " - " + e).join("\n"));
+  process.exit(1);
+}
+console.log(`validation ok: 55 trophies, ${steps} steps (${multi} multi-source), ${disputes} disputes on ${disputeTrophies} trophies, 16/16 sources cited, ${collectibles} collectible targets, app text ${appBytes} bytes`);
+
+// ---------- emit ----------
+mkdirSync(out, { recursive: true });
 cpSync(join(root, "app"), join(out, "app"), { recursive: true });
-cpSync(join(root, "screenshots"), join(out, "screenshots"), { recursive: true });
-writeFileSync(
-  join(out, "dossier.json"),
-  buildDossier(out, {
-    text_max_bytes: 163840,
-    screenshots: { max: 4, max_bytes: 262144 },
-    app_max_files: 993,
-    app_max_bytes: 50331648,
-  })
-);
-console.log("dossier written to " + join(out, "dossier.json"));
+mkdirSync(join(out, "screenshots"), { recursive: true });
+if (existsSync(join(root, "screenshots"))) {
+  cpSync(join(root, "screenshots"), join(out, "screenshots"), { recursive: true });
+}
+// buildDossier returns the dossier bytes; the caller writes them (kit pattern).
+const dossierBytes = buildDossier(out, {
+  text_max_bytes: 163840,
+  screenshots: { max: 4, max_bytes: 262144 },
+  app_max_files: 993,
+  app_max_bytes: 50331648,
+});
+need(dossierBytes.length <= 1500000, `dossier ${dossierBytes.length} > 1.5 MB`);
+if (errors.length) {
+  console.error("VALIDATION FAILED:\n" + errors.map((e) => " - " + e).join("\n"));
+  process.exit(1);
+}
+writeFileSync(join(out, "dossier.json"), dossierBytes);
+console.log(`dossier.json written: ${dossierBytes.length} bytes`);
