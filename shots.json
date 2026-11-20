@@ -1,5 +1,1 @@
-[
-  { "file": "1-checklist.jpg", "path": "/", "viewport": { "width": 1280, "height": 800 } },
-  { "file": "2-silver.jpg", "path": "/", "grade": "silver", "viewport": { "width": 1280, "height": 800 } },
-  { "file": "3-bronze.jpg", "path": "/", "grade": "bronze", "scroll": 1400, "viewport": { "width": 1280, "height": 800 } }
-]
+{"shots":[{"file":"1-cover-checklist.jpg","view":"Tracker tab with the Positive Mental Attitude detail open (counter, cited steps, disputes)"},{"file":"2-roadmap.jpg","view":"Roadmap tab with the Next-up rail"},{"file":"3-missables.jpg","view":"Missables tab leading with Positive Mental Attitude"},{"file":"4-dispute-detail.jpg","view":"Tracker tab with The Truth Is Out There detail open (Sources differ box)"}]}

@@ -1,41 +1,38 @@
 # Leonida Ledger — GTA VI Trophy Guide & Tracker
 
-[![Competition](https://make.fun/badge/gta6-trophy-guide-01.svg)](https://make.fun/bounty/gta6-trophy-guide-01)
-[![Rank](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/rank.svg)](https://make.fun/bounty/gta6-trophy-guide-01)
-[![Reward](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/reward.svg)](https://make.fun/bounty/gta6-trophy-guide-01)
+[![GTA 6 Trophy Guide](https://make.fun/badge/gta6-trophy-guide-01.svg)](https://make.fun/c/gta6-trophy-guide-01/)
+[![Rank](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/rank.svg)](https://make.fun/c/gta6-trophy-guide-01/)
+[![Reward](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/reward.svg)](https://make.fun/c/gta6-trophy-guide-01/)
 
-An offline guide and tracker for all **55 Grand Theft Auto VI PlayStation 5 trophies** (1 Platinum, 2 Gold, 6 Silver, 46 Bronze), built for the [make.fun GTA 6 trophy guide bounty](https://make.fun/bounty/gta6-trophy-guide-01).
+A complete Grand Theft Auto VI trophy guide and tracker for the [gta6-trophy-guide-01 bounty](https://make.fun/c/gta6-trophy-guide-01/): all 55 trophies (1 Platinum, 2 Gold, 6 Silver, 46 Bronze; 28 hidden), a 7-stage roadmap to the Platinum, a Missables tab, and a Sources tab. Fully static and offline — open `app/index.html`, no build step, nothing loaded over the network.
 
-Every guide was written for this page, and every fact in it carries its receipts: 394 guide steps cite numbered sources like [1], each trophy's detail pane lists the sources that guide rests on, and where the sources disagree — which mission really ends the story, the Chapter 1 meditation, the 15-vs-18 meditation count, whether stranger strands can expire or even count toward 100%, whether the hidden one-off methods are even known yet — the disagreement is shown both ways with the call this guide makes. Thirty-two disputes across twenty-five trophies are recorded that way.
+## What is inside
 
-## What's inside
+- **Tracker** — checklist with progress saved locally, search, filters (kind, grade, status, disputed-only), a spoiler shield over the 28 hidden trophies, a collectible counter with a stepper on every counted trophy, and a detail pane per trophy: a short guide, numbered steps with per-step citations, a sources rail, and a "Sources differ" box wherever the guides disagree.
+- **Roadmap** — 7 stages in order with a Next-up rail that always points at the first unfinished stage.
+- **Missables** — leads with Positive Mental Attitude, the one trophy that can lock you out: Lucia's Chapter 1 balcony meditation, plus the timed Yago race and save discipline (no mission replay).
+- **Sources** — the 12 guides this ledger was written from, read 20 November 2026, with live counts of how many steps cite each one.
+- **Progress tools** — export, import, reset, and a sample-progress loader.
 
-- **Audit bar** — live counts computed from the dataset itself: 55/55 official names, descriptions and grades, the grade split, 28 hidden trophies, total guide steps, steps cited, guides citing a source, claims backed by 2+ sources, disputes, and the date the sources were read.
-- **Tracker** — checklist with saved progress (localStorage), a prominent collectible counter (− / + stepper, progress bar) per counted trophy, search, kind/grade/status filters, a “Sources differ” filter chip, export / import / reset and sample progress.
-- **Detail pane** — official description, our guide, numbered steps with per-step citations, SOURCES DIFFER boxes, and a “Sources for this guide” rail with URLs and read dates.
-- **Roadmap** — seven stages to the Platinum with a “Next up” rail in roadmap order.
-- **Missables tab** — leads with Positive Mental Attitude, the game's only possibly-missable trophy, its Chapter 1 window and both of its disputes, honestly framed.
-- **Sources tab** — every source, numbered to match the citations, with a live “cited in N/55 guides” count for each.
-- **Spoiler shield** — the 28 hidden trophies stay masked until earned or until you lower the shield.
+## Audit (computed live from the dataset)
+
+- 55 trophies, grades 1 / 2 / 6 / 46, 28 hidden
+- 420 guide steps — 420/420 cited, 418 backed by 2+ sources
+- 33 disputes across 25 trophies, each showing both sides with citations and an explicit "our call"
+- 12 sources read: PowerPyx, GTABase, KeenGamer, EGamers, Insider Gaming, HowToVideoGame, Exophase, OutputLag, Push Square, GTA Zone, GamesFuze, GTAScoop
+
+Five hidden trophies have no confirmed unlock method in any guide we read (In The Beginning…, Capital Offense, Bad Luck, I Guess, The Truth Is Out There, Ten Pin). They are marked unconfirmed with the best leads we found — never guessed.
 
 ## Run it
 
-The app is plain static files — no build step, no network. Serve the folder and open it:
-
 ```sh
-node serve.ts          # serves app/ at http://localhost:8080
+node serve.ts        # serves app/ at http://localhost:8080
 ```
 
-or open `app/index.html` in a desktop browser. Progress is stored in the browser's localStorage and can be exported to a JSON file from the toolbar.
-
-## Hand in (the bounty program)
+## Hand it in
 
 ```sh
 mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
-`main.ts` validates the dataset (55 trophies in the official split, every guide step cited to a valid source, disputes in two-sided shape, verified collectible counts), then copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the vendored make.fun frontend library.
-
-## Data & sources
-
-`app/data/trophies.json` holds the official trophy names and descriptions as PlayStation publishes them, plus guides written for this entry. The numbered sources are PowerPyx, GTABase, EGamers, KeenGamer, HowToVideoGame, Exophase, Insider Gaming, OutputLag, Push Square, GTA Zone, GamesFuze and GTAScoop — each read on 2026-11-20 and listed in full, with URLs, on the app's Sources tab.
+`main.ts` validates the dataset first (55 trophies, grade split, 28 hidden, every step cited, every dispute showing both sides, all 12 sources used, roadmap covering all 55 exactly once, source bytes inside the dossier text cap, 4 screenshots inside their caps), then copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the kit's `buildDossier`.

@@ -4,100 +4,97 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Leonida Ledger — GTA VI Trophy Guide &amp; Tracker</title>
-<meta name="description" content="An offline guide and tracker for all 55 Grand Theft Auto VI PlayStation 5 trophies: every guide step cited to a numbered source, disputes shown both ways, a seven-stage roadmap, missable alerts, spoiler protection and saved progress.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="site-header">
+<header class="top">
   <div class="brand">
-    <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-      <rect x="7" y="5" width="34" height="38" rx="3" class="mark-cover"/>
-      <rect x="12" y="10" width="24" height="28" class="mark-page"/>
-      <circle cx="24" cy="20" r="5.5" class="mark-seal"/>
-      <rect x="16" y="30" width="16" height="2.2" class="mark-rule"/>
-      <rect x="16" y="34" width="11" height="2.2" class="mark-rule"/>
-    </svg>
-    <div class="brand-text">
-      <h1>Leonida Ledger</h1>
-      <p class="brand-sub">GTA VI Trophy Guide &amp; Tracker — all 55 PlayStation 5 trophies, every claim cited, fully offline</p>
-    </div>
+    <h1>Leonida Ledger</h1>
+    <p class="sub">Grand Theft Auto VI — all 55 trophies, one playthrough. Every step cited, every disagreement shown both ways.</p>
   </div>
-  <div id="headerStats" class="header-stats">Loading the ledger…</div>
+  <div class="top-actions">
+    <button id="spoilerBtn" type="button" aria-pressed="true">Spoilers: hidden</button>
+    <button id="sampleBtn" type="button">Load sample progress</button>
+  </div>
 </header>
 
-<section id="auditBar" class="audit-bar" aria-label="Data audit"></section>
+<section class="audit" id="audit" aria-label="Audit bar">Loading the ledger…</section>
+<section class="stats" id="stats" aria-label="Your progress"></section>
 
-<nav class="tabs" aria-label="Guide sections">
-  <button type="button" class="tab-btn is-active" data-tab="tracker">Tracker</button>
-  <button type="button" class="tab-btn" data-tab="roadmap">Roadmap</button>
-  <button type="button" class="tab-btn" data-tab="missables">Missables <span class="tab-count">1</span></button>
-  <button type="button" class="tab-btn" data-tab="sources">Sources</button>
+<nav class="tabs" aria-label="Sections">
+  <button type="button" data-tab="tracker" class="active">Tracker</button>
+  <button type="button" data-tab="roadmap">Roadmap</button>
+  <button type="button" data-tab="missables">Missables</button>
+  <button type="button" data-tab="sources">Sources</button>
 </nav>
 
 <main>
-  <section id="view-tracker" class="view">
-    <section id="statsPanel" class="stats-panel" aria-label="Progress statistics"></section>
-
-    <section class="toolbar" aria-label="Tracker controls">
-      <div class="toolbar-row">
-        <label class="search-box">
-          <span class="search-label">Search</span>
-          <input id="searchInput" type="search" placeholder="Search trophies…" autocomplete="off">
-        </label>
-        <label class="select-box">Status
-          <select id="statusSelect">
-            <option value="all">All trophies</option>
-            <option value="earned">Earned</option>
-            <option value="unearned">Not earned</option>
-          </select>
-        </label>
-        <label class="select-box">Sort
-          <select id="sortSelect">
-            <option value="list">List order</option>
-            <option value="stage">Roadmap stage</option>
-            <option value="grade">Grade</option>
-            <option value="name">Name A–Z</option>
-          </select>
-        </label>
-        <label class="shield-toggle" title="Hide the names and descriptions of hidden trophies you have not earned">
-          <input type="checkbox" id="shieldToggle" checked> Spoiler shield
-        </label>
-        <span class="toolbar-spacer"></span>
-        <button type="button" id="sampleBtn" class="action-btn">Load sample progress</button>
-        <button type="button" id="exportBtn" class="action-btn">Export</button>
-        <button type="button" id="importBtn" class="action-btn">Import</button>
-        <input type="file" id="importFile" accept="application/json" hidden>
-        <button type="button" id="resetBtn" class="action-btn action-danger">Reset</button>
-      </div>
-      <div class="toolbar-row">
-        <div id="kindChips" class="chip-row" role="group" aria-label="Filter by kind"></div>
-        <div id="gradeChips" class="chip-row" role="group" aria-label="Filter by grade"></div>
-        <button type="button" id="disputedChip" class="chip-btn chip-disputed" aria-pressed="false">Sources differ</button>
-        <span class="toolbar-spacer"></span>
-        <span id="resultCount" class="result-count"></span>
-      </div>
-    </section>
-
-    <div class="tracker-layout">
-      <section id="checklist" class="checklist" aria-label="Trophy checklist"></section>
-      <section id="detail" class="detail" aria-label="Trophy guide"></section>
+  <section id="tab-tracker" class="tabpage active">
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search trophies, guides, disputes…" aria-label="Search trophies">
+      <select id="kindFilter" aria-label="Filter by kind">
+        <option value="all">All kinds</option>
+        <option value="story">Story</option>
+        <option value="character">Character questlines</option>
+        <option value="activity">Activities</option>
+        <option value="partner">Partner</option>
+        <option value="robbery">Robberies</option>
+        <option value="explore">Exploration</option>
+        <option value="misc">One-offs</option>
+        <option value="platinum">Platinum</option>
+      </select>
+      <select id="gradeFilter" aria-label="Filter by grade">
+        <option value="all">All grades</option>
+        <option value="platinum">Platinum</option>
+        <option value="gold">Gold</option>
+        <option value="silver">Silver</option>
+        <option value="bronze">Bronze</option>
+      </select>
+      <select id="statusFilter" aria-label="Filter by status">
+        <option value="all">All statuses</option>
+        <option value="earned">Earned</option>
+        <option value="todo">Still to do</option>
+      </select>
+      <label class="check"><input id="disputedOnly" type="checkbox"> Disputed only</label>
     </div>
-
-    <section class="nextup-strip" aria-label="Next up">
-      <h2 class="strip-title">Next up <span>in roadmap order</span></h2>
-      <div id="nextUp" class="nextup-grid"></div>
-    </section>
+    <div class="tracker-grid">
+      <div class="list-wrap">
+        <p class="list-count" id="listCount"></p>
+        <ul class="trophy-list" id="trophyList"></ul>
+      </div>
+      <aside class="detail" id="detail" aria-label="Trophy detail">
+        <p class="detail-empty">Pick a trophy to see its guide, cited steps, counter and any dispute.</p>
+      </aside>
+    </div>
   </section>
 
-  <section id="view-roadmap" class="view" hidden></section>
-  <section id="view-missables" class="view" hidden></section>
-  <section id="view-sources" class="view" hidden></section>
+  <section id="tab-roadmap" class="tabpage">
+    <div class="nextup" id="nextup"></div>
+    <ol class="roadmap" id="roadmap"></ol>
+  </section>
+
+  <section id="tab-missables" class="tabpage">
+    <div id="missables"></div>
+  </section>
+
+  <section id="tab-sources" class="tabpage">
+    <p class="sources-note">Every guide step in this ledger cites at least one source below, read on 20 November 2026. Counts are computed live from the dataset.</p>
+    <table class="sources-table">
+      <thead><tr><th>Source</th><th>Read</th><th>Steps citing it</th><th>Trophies citing it</th></tr></thead>
+      <tbody id="sourcesBody"></tbody>
+    </table>
+  </section>
 </main>
 
-<footer class="site-footer">
-  <p>Leonida Ledger runs entirely from its own files — no network, no accounts. Guides were written for this page; the facts in them cite the numbered sources on the Sources tab, and disagreements between those sources are shown, not hidden. Progress is saved in this browser only.</p>
+<footer class="foot">
+  <div class="foot-actions">
+    <button id="exportBtn" type="button">Export progress</button>
+    <label class="import-label">Import progress <input id="importFile" type="file" accept="application/json"></label>
+    <button id="resetBtn" type="button">Reset progress</button>
+  </div>
+  <p class="foot-note">Names and descriptions are the official list as published 18 November 2026. Guide text is written in our own words from the sources listed. Methods for five hidden trophies are still unconfirmed in every guide we read — they are marked as such, not guessed.</p>
 </footer>
 
-<script type="module" src="js/main.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

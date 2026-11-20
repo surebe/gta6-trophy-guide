@@ -1,122 +1,136 @@
-// Leonida Ledger — hand-in program for the gta6-trophy-guide-01 submission.
-//
-// The guide is the static web app in app/ (plain HTML, CSS and ES modules,
-// no build step, fully offline). This program validates the trophy dataset
-// against the citation model the guide is built on — 55 trophies in the
-// official split, every guide step carrying at least one valid source
-// citation, disputes in their two-sided shape — then copies app/ and
-// screenshots/ into the output directory and writes dossier.json there
-// with the vendored make.fun frontend library.
-//
-// Run it the way the grader does, or locally with an output override:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+// Leonida Ledger entrypoint: validate the guide dataset, then hand the app in.
+// It copies app/ and screenshots/ from beside this file to /output (or
+// MAKEFUN_OUTPUT_DIR outside the grader) and writes /output/dossier.json with
+// the kit's buildDossier from vendor/makefun-frontend.ts, which the scorer
+// re-runs byte for byte. Validation runs first so a bad dataset never ships.
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
 
-const repoRoot = fileURLToPath(new URL('.', import.meta.url));
-const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const here = fileURLToPath(new URL('.', import.meta.url));
+const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const TEXT_MAX_BYTES = 163840;
+const DOSSIER_MAX_BYTES = 1572864; // 1.5 MiB
+const SHOT_MAX = 4;
+const SHOT_MAX_BYTES = 262144;
 
-const EXPECTED_TOTAL = 55;
-const EXPECTED_GRADES = { platinum: 1, gold: 2, silver: 6, bronze: 46 };
-const EXPECTED_HIDDEN = 28;
-const EXPECTED_MISSABLE = [28];
-// The collectible totals the guides were verified against.
-const EXPECTED_COUNTS = { 15: 250, 17: 42, 18: 14, 19: 20, 25: 8, 28: 18, 30: 3, 31: 100, 32: 50, 34: 3, 35: 100, 36: 5, 40: 5, 55: 10 };
-
-function fail(message) {
-  throw new Error(`trophies.json: ${message}`);
+function fail(msg) {
+  throw new Error(`Leonida Ledger: ${msg}`);
 }
 
-function validateDataset() {
-  const dataset = JSON.parse(readFileSync(join(repoRoot, 'app', 'data', 'trophies.json'), 'utf8'));
+// ---------- read and validate the dataset ----------
+const dataPath = join(here, 'app', 'data', 'trophies.json');
+const doc = JSON.parse(readFileSync(dataPath, 'utf8'));
+const trophies = doc.trophies;
+const sourceIds = new Set(doc.sources.map((s) => s.id));
 
-  // The numbered source directory every citation points into.
-  const sources = dataset.sources;
-  if (!Array.isArray(sources) || sources.length === 0) fail('a non-empty sources array is required');
-  const sourceNumbers = new Set();
-  for (const source of sources) {
-    if (!Number.isInteger(source.n) || sourceNumbers.has(source.n)) fail(`source numbers must be unique integers, got ${source.n}`);
-    sourceNumbers.add(source.n);
-    if (!source.name?.trim() || !source.title?.trim()) fail(`source ${source.n} needs a name and a title`);
-    if (!/^https:\/\//.test(source.url ?? '')) fail(`source ${source.n} needs an https URL`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(source.read ?? '')) fail(`source ${source.n} needs a read date (YYYY-MM-DD)`);
-  }
-  const checkRefs = (refs, where) => {
-    if (!Array.isArray(refs) || refs.length === 0) fail(`${where} must cite at least one source`);
-    for (const ref of refs) if (!sourceNumbers.has(ref)) fail(`${where} cites unknown source ${ref}`);
-  };
+if (!Array.isArray(trophies) || trophies.length !== 55) fail(`expected 55 trophies, found ${trophies?.length}`);
+const grades = { platinum: 0, gold: 0, silver: 0, bronze: 0 };
+const names = new Set();
+let hidden = 0;
+let steps = 0;
+let multi = 0;
+let disputes = 0;
+let disputedTrophies = 0;
+const usedSources = new Set();
 
-  const trophies = dataset.trophies;
-  if (!Array.isArray(trophies) || trophies.length !== EXPECTED_TOTAL) {
-    fail(`must list ${EXPECTED_TOTAL} trophies, found ${trophies?.length}`);
-  }
-  const gradeCounts = {};
-  const seenIds = new Set();
-  let steps = 0;
-  let disputes = 0;
-  for (const trophy of trophies) {
-    if (seenIds.has(trophy.id)) fail(`duplicate trophy id ${trophy.id}`);
-    seenIds.add(trophy.id);
-    gradeCounts[trophy.grade] = (gradeCounts[trophy.grade] ?? 0) + 1;
-    if (!trophy.name?.trim()) fail(`trophy ${trophy.id} is missing its official name`);
-    if (!trophy.description?.trim()) fail(`trophy ${trophy.id} is missing its official description`);
-    if (!trophy.guide?.trim()) fail(`trophy ${trophy.id} (${trophy.name}) has an empty guide`);
-    if (!Array.isArray(trophy.steps) || trophy.steps.length === 0) fail(`trophy ${trophy.id} has no guide steps`);
-    for (const step of trophy.steps) {
-      if (!step.text?.trim()) fail(`trophy ${trophy.id} has an empty guide step`);
-      checkRefs(step.refs, `trophy ${trophy.id} step "${step.text.slice(0, 32)}…"`);
-      steps += 1;
+for (const t of trophies) {
+  if (typeof t.name !== 'string' || !t.name) fail(`trophy ${t.id}: no name`);
+  if (names.has(t.name)) fail(`duplicate trophy name: ${t.name}`);
+  names.add(t.name);
+  if (!(t.grade in grades)) fail(`${t.name}: bad grade ${t.grade}`);
+  grades[t.grade]++;
+  if (t.hidden) hidden++;
+  if (typeof t.description !== 'string' || !t.description.trim()) fail(`${t.name}: blank description`);
+  if (typeof t.guide !== 'string' || !t.guide.trim()) fail(`${t.name}: blank guide`);
+  if (!Array.isArray(t.steps) || t.steps.length === 0) fail(`${t.name}: no guide steps`);
+  if (!Array.isArray(t.disputes)) fail(`${t.name}: disputes is not an array`);
+  if (t.disputes.length > 0) disputedTrophies++;
+  for (const s of t.steps) {
+    steps++;
+    if (!Array.isArray(s.s) || s.s.length === 0) fail(`${t.name}: a step with no citation`);
+    if (typeof s.t !== 'string' || !s.t.trim()) fail(`${t.name}: a blank step`);
+    for (const id of s.s) {
+      if (!sourceIds.has(id)) fail(`${t.name}: step cites unknown source ${id}`);
+      usedSources.add(id);
     }
-    for (const dispute of trophy.disputes ?? []) {
-      if (!dispute.topic?.trim() || !dispute.call?.trim()) fail(`trophy ${trophy.id} has a dispute without a topic or a call`);
-      if (!dispute.a?.claim?.trim() || !dispute.b?.claim?.trim()) fail(`trophy ${trophy.id} dispute "${dispute.topic}" must state both sides`);
-      checkRefs(dispute.a.refs, `trophy ${trophy.id} dispute side A`);
-      checkRefs(dispute.b.refs, `trophy ${trophy.id} dispute side B`);
-      disputes += 1;
+    if (s.s.length >= 2) multi++;
+  }
+  for (const d of t.disputes) {
+    disputes++;
+    for (const k of ['q', 'a', 'b', 'call']) {
+      if (typeof d[k] !== 'string' || !d[k].trim()) fail(`${t.name}: dispute missing ${k}`);
     }
-    const expectedCount = EXPECTED_COUNTS[trophy.id];
-    if (expectedCount !== undefined && trophy.count !== expectedCount) {
-      fail(`trophy ${trophy.id} count must be ${expectedCount}, found ${trophy.count}`);
+    if (!Array.isArray(d.s) || d.s.length < 2) fail(`${t.name}: dispute without both sides cited`);
+    for (const id of d.s) {
+      if (!sourceIds.has(id)) fail(`${t.name}: dispute cites unknown source ${id}`);
+      usedSources.add(id);
     }
   }
-  for (const [grade, expected] of Object.entries(EXPECTED_GRADES)) {
-    if (gradeCounts[grade] !== expected) fail(`expected ${expected} ${grade} trophies, found ${gradeCounts[grade] ?? 0}`);
+}
+if (grades.platinum !== 1 || grades.gold !== 2 || grades.silver !== 6 || grades.bronze !== 46) {
+  fail(`grade split is ${JSON.stringify(grades)}, expected 1/2/6/46`);
+}
+if (hidden !== 28) fail(`expected 28 hidden trophies, found ${hidden}`);
+const missable = trophies.filter((t) => t.name === 'Positive Mental Attitude');
+if (missable.length !== 1) fail('Positive Mental Attitude must appear exactly once');
+if (doc.sources.length !== 12) fail(`expected 12 sources, found ${doc.sources.length}`);
+if (usedSources.size !== 12) fail(`only ${usedSources.size} of 12 sources are cited`);
+if (!Array.isArray(doc.roadmap) || doc.roadmap.length !== 7) fail('roadmap must have 7 stages');
+const roadmapIds = doc.roadmap.flatMap((s) => s.trophies);
+if (new Set(roadmapIds).size !== 55 || roadmapIds.length !== 55) fail('roadmap must cover all 55 trophies exactly once');
+
+// ---------- source bytes must fit the dossier text cap ----------
+function sourceBytes(dir, acc = { bytes: 0, files: [] }) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) sourceBytes(p, acc);
+    else if (/\.(html|js|mjs|css|json)$/.test(e.name) && !e.name.endsWith('.min.js') && !e.name.endsWith('.min.css')) {
+      acc.bytes += statSync(p).size;
+      acc.files.push(p);
+    }
   }
-  const hidden = trophies.filter((trophy) => trophy.hidden).length;
-  if (hidden !== EXPECTED_HIDDEN) fail(`expected ${EXPECTED_HIDDEN} hidden trophies, found ${hidden}`);
-  const missable = trophies.filter((trophy) => trophy.missable).map((trophy) => trophy.id);
-  if (JSON.stringify(missable) !== JSON.stringify(EXPECTED_MISSABLE)) {
-    fail(`missable trophies must be exactly ${EXPECTED_MISSABLE}, found ${missable}`);
-  }
-  console.log(
-    `Leonida Ledger dataset OK: ${trophies.length} trophies (1 platinum, 2 gold, 6 silver, 46 bronze), ` +
-      `${hidden} hidden, missable ${missable}, ${steps} guide steps all cited to ${sources.length} sources, ${disputes} disputes shown both ways.`,
-  );
+  return acc;
+}
+const appSources = sourceBytes(join(here, 'app'));
+if (appSources.bytes > 160000) fail(`app sources are ${appSources.bytes} bytes, over the 160000 budget for the dossier text cap`);
+
+// ---------- screenshots ----------
+const shotDir = join(here, 'screenshots');
+if (!existsSync(shotDir)) fail('no screenshots/ directory');
+const shots = readdirSync(shotDir).filter((n) => !n.startsWith('.')).sort();
+if (shots.length === 0) fail('screenshots/ holds no image');
+if (shots.length > SHOT_MAX) fail(`screenshots/ holds ${shots.length} files, over the ${SHOT_MAX} allowed`);
+for (const n of shots) {
+  const size = statSync(join(shotDir, n)).size;
+  if (size > SHOT_MAX_BYTES) fail(`screenshots/${n} is ${size} bytes, over the ${SHOT_MAX_BYTES} allowed`);
 }
 
-function handIn() {
-  mkdirSync(outputDir, { recursive: true });
-  cpSync(join(repoRoot, 'app'), join(outputDir, 'app'), { recursive: true });
-  mkdirSync(join(outputDir, 'screenshots'), { recursive: true });
-  const screenshotsDir = join(repoRoot, 'screenshots');
-  if (existsSync(screenshotsDir)) {
-    cpSync(screenshotsDir, join(outputDir, 'screenshots'), { recursive: true });
-  }
-  // The scorer's caps for this bounty: at most 4 screenshots of 256 KiB,
-  // at most 993 files and 48 MiB under app/, and 160 KiB of source text in
-  // the dossier the judge reads.
-  const dossier = buildDossier(outputDir, {
-    text_max_bytes: 163840,
-    screenshots: { max: 4, max_bytes: 262144 },
-    app_max_files: 993,
-    app_max_bytes: 50331648,
-  });
-  writeFileSync(join(outputDir, 'dossier.json'), dossier);
-  console.log(`Handed in to ${outputDir}: app/, screenshots/ and dossier.json (${dossier.length} bytes).`);
+// ---------- hand it in ----------
+mkdirSync(out, { recursive: true });
+cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
+mkdirSync(join(out, 'screenshots'), { recursive: true });
+cpSync(shotDir, join(out, 'screenshots'), { recursive: true });
+const dossierBytes = buildDossier(out, {
+  text_max_bytes: TEXT_MAX_BYTES,
+  screenshots: { max: SHOT_MAX, max_bytes: SHOT_MAX_BYTES },
+  app_max_files: 993,
+  app_max_bytes: 50331648,
+});
+writeFileSync(join(out, 'dossier.json'), dossierBytes);
+
+// ---------- verify what was written ----------
+const dossier = JSON.parse(Buffer.from(dossierBytes).toString('utf8'));
+if (dossierBytes.length > DOSSIER_MAX_BYTES) fail(`dossier.json is ${dossierBytes.length} bytes, over the ${DOSSIER_MAX_BYTES} allowed`);
+if (typeof dossier.text !== 'string' || dossier.text.includes('[Cut at ')) {
+  fail('dossier text was cut at the cap — a source file did not fit whole');
+}
+if (!Array.isArray(dossier.images) || dossier.images.length !== shots.length) {
+  fail('dossier images do not match screenshots/');
 }
 
-validateDataset();
-handIn();
+console.log(`Leonida Ledger OK — ${trophies.length} trophies (${grades.platinum}P/${grades.gold}G/${grades.silver}S/${grades.bronze}B, ${hidden} hidden)`);
+console.log(`guide steps: ${steps} (all cited, ${multi} with 2+ sources); disputes: ${disputes} across ${disputedTrophies} trophies; sources: ${usedSources.size}`);
+console.log(`app sources: ${appSources.bytes} bytes in ${appSources.files.length} files; screenshots: ${shots.map((n) => `${n} ${statSync(join(shotDir, n)).size}B`).join(', ')}`);
+console.log(`dossier.json: ${dossierBytes.length} bytes; text: ${Buffer.byteLength(dossier.text, 'utf8')} bytes, no cut`);
