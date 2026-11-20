@@ -1,11 +1,12 @@
-// Leonida Ledger — entry point for the gta6-trophy-guide-01 submission.
+// Leonida Ledger — hand-in program for the gta6-trophy-guide-01 submission.
 //
-// The guide itself is the static web app in app/ (plain HTML, CSS and ES
-// modules with no build step; it runs fully offline in a desktop browser).
-// This program is the hand-in step: it first validates the trophy dataset
-// the app ships, then copies app/ and screenshots/ into the output
-// directory and writes dossier.json there with the vendored make.fun
-// frontend library, byte for byte as the scorer expects.
+// The guide is the static web app in app/ (plain HTML, CSS and ES modules,
+// no build step, fully offline). This program validates the trophy dataset
+// against the citation model the guide is built on — 55 trophies in the
+// official split, every guide step carrying at least one valid source
+// citation, disputes in their two-sided shape — then copies app/ and
+// screenshots/ into the output directory and writes dossier.json there
+// with the vendored make.fun frontend library.
 //
 // Run it the way the grader does, or locally with an output override:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
@@ -18,41 +19,81 @@ import { buildDossier } from './vendor/makefun-frontend.ts';
 const repoRoot = fileURLToPath(new URL('.', import.meta.url));
 const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// The dataset contract the guide is judged against: the official list has
-// 55 trophies — 1 platinum, 2 gold, 6 silver, 46 bronze — and every trophy
-// must carry a non-empty guide of our own.
 const EXPECTED_TOTAL = 55;
 const EXPECTED_GRADES = { platinum: 1, gold: 2, silver: 6, bronze: 46 };
+const EXPECTED_HIDDEN = 28;
+const EXPECTED_MISSABLE = [28];
+// The collectible totals the guides were verified against.
+const EXPECTED_COUNTS = { 15: 250, 17: 42, 18: 14, 19: 20, 25: 8, 28: 18, 30: 3, 31: 100, 32: 50, 34: 3, 35: 100, 36: 5, 40: 5, 55: 10 };
 
-function validateTrophyDataset() {
-  const datasetPath = join(repoRoot, 'app', 'data', 'trophies.json');
-  const dataset = JSON.parse(readFileSync(datasetPath, 'utf8'));
+function fail(message) {
+  throw new Error(`trophies.json: ${message}`);
+}
+
+function validateDataset() {
+  const dataset = JSON.parse(readFileSync(join(repoRoot, 'app', 'data', 'trophies.json'), 'utf8'));
+
+  // The numbered source directory every citation points into.
+  const sources = dataset.sources;
+  if (!Array.isArray(sources) || sources.length === 0) fail('a non-empty sources array is required');
+  const sourceNumbers = new Set();
+  for (const source of sources) {
+    if (!Number.isInteger(source.n) || sourceNumbers.has(source.n)) fail(`source numbers must be unique integers, got ${source.n}`);
+    sourceNumbers.add(source.n);
+    if (!source.name?.trim() || !source.title?.trim()) fail(`source ${source.n} needs a name and a title`);
+    if (!/^https:\/\//.test(source.url ?? '')) fail(`source ${source.n} needs an https URL`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(source.read ?? '')) fail(`source ${source.n} needs a read date (YYYY-MM-DD)`);
+  }
+  const checkRefs = (refs, where) => {
+    if (!Array.isArray(refs) || refs.length === 0) fail(`${where} must cite at least one source`);
+    for (const ref of refs) if (!sourceNumbers.has(ref)) fail(`${where} cites unknown source ${ref}`);
+  };
+
   const trophies = dataset.trophies;
   if (!Array.isArray(trophies) || trophies.length !== EXPECTED_TOTAL) {
-    throw new Error(`trophies.json must list ${EXPECTED_TOTAL} trophies, found ${trophies?.length}`);
+    fail(`must list ${EXPECTED_TOTAL} trophies, found ${trophies?.length}`);
   }
   const gradeCounts = {};
+  const seenIds = new Set();
+  let steps = 0;
+  let disputes = 0;
   for (const trophy of trophies) {
+    if (seenIds.has(trophy.id)) fail(`duplicate trophy id ${trophy.id}`);
+    seenIds.add(trophy.id);
     gradeCounts[trophy.grade] = (gradeCounts[trophy.grade] ?? 0) + 1;
-    if (typeof trophy.name !== 'string' || trophy.name.trim() === '') {
-      throw new Error(`trophy ${trophy.id} is missing its official name`);
+    if (!trophy.name?.trim()) fail(`trophy ${trophy.id} is missing its official name`);
+    if (!trophy.description?.trim()) fail(`trophy ${trophy.id} is missing its official description`);
+    if (!trophy.guide?.trim()) fail(`trophy ${trophy.id} (${trophy.name}) has an empty guide`);
+    if (!Array.isArray(trophy.steps) || trophy.steps.length === 0) fail(`trophy ${trophy.id} has no guide steps`);
+    for (const step of trophy.steps) {
+      if (!step.text?.trim()) fail(`trophy ${trophy.id} has an empty guide step`);
+      checkRefs(step.refs, `trophy ${trophy.id} step "${step.text.slice(0, 32)}…"`);
+      steps += 1;
     }
-    if (typeof trophy.guide !== 'string' || trophy.guide.trim() === '') {
-      throw new Error(`trophy ${trophy.id} (${trophy.name}) has an empty guide`);
+    for (const dispute of trophy.disputes ?? []) {
+      if (!dispute.topic?.trim() || !dispute.call?.trim()) fail(`trophy ${trophy.id} has a dispute without a topic or a call`);
+      if (!dispute.a?.claim?.trim() || !dispute.b?.claim?.trim()) fail(`trophy ${trophy.id} dispute "${dispute.topic}" must state both sides`);
+      checkRefs(dispute.a.refs, `trophy ${trophy.id} dispute side A`);
+      checkRefs(dispute.b.refs, `trophy ${trophy.id} dispute side B`);
+      disputes += 1;
+    }
+    const expectedCount = EXPECTED_COUNTS[trophy.id];
+    if (expectedCount !== undefined && trophy.count !== expectedCount) {
+      fail(`trophy ${trophy.id} count must be ${expectedCount}, found ${trophy.count}`);
     }
   }
   for (const [grade, expected] of Object.entries(EXPECTED_GRADES)) {
-    if (gradeCounts[grade] !== expected) {
-      throw new Error(`expected ${expected} ${grade} trophies, found ${gradeCounts[grade] ?? 0}`);
-    }
+    if (gradeCounts[grade] !== expected) fail(`expected ${expected} ${grade} trophies, found ${gradeCounts[grade] ?? 0}`);
   }
   const hidden = trophies.filter((trophy) => trophy.hidden).length;
-  const missable = trophies.filter((trophy) => trophy.missable).length;
+  if (hidden !== EXPECTED_HIDDEN) fail(`expected ${EXPECTED_HIDDEN} hidden trophies, found ${hidden}`);
+  const missable = trophies.filter((trophy) => trophy.missable).map((trophy) => trophy.id);
+  if (JSON.stringify(missable) !== JSON.stringify(EXPECTED_MISSABLE)) {
+    fail(`missable trophies must be exactly ${EXPECTED_MISSABLE}, found ${missable}`);
+  }
   console.log(
-    `Leonida Ledger dataset OK: ${trophies.length} trophies ` +
-      `(${EXPECTED_GRADES.platinum} platinum, ${EXPECTED_GRADES.gold} gold, ` +
-      `${EXPECTED_GRADES.silver} silver, ${EXPECTED_GRADES.bronze} bronze), ` +
-      `${hidden} hidden, ${missable} missable, every guide present.`,
+    `Leonida Ledger dataset OK: ${trophies.length} trophies (1 platinum, 2 gold, 6 silver, 46 bronze), ` +
+      `${hidden} hidden, missable ${missable}, ${steps} guide steps all cited to ${sources.length} sources, ${disputes} disputes shown both ways.`,
   );
 }
 
@@ -77,5 +118,5 @@ function handIn() {
   console.log(`Handed in to ${outputDir}: app/, screenshots/ and dossier.json (${dossier.length} bytes).`);
 }
 
-validateTrophyDataset();
+validateDataset();
 handIn();

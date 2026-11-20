@@ -1,56 +1,64 @@
-// render-roadmap.js — renders the seven-stage roadmap to the Platinum:
-// stage order, the official-description reasoning behind each stage, the
-// trophies that sit in it, per-stage progress, and the missable warning in
-// stage 1 where it belongs.
+// render-roadmap.js — the seven-stage roadmap to the Platinum, with the
+// "Next up" rail (roadmap order, earned work skipped) at the top and one
+// section per stage. Shared by the Roadmap tab; the tracker reuses the
+// Next up rail on its own.
 
-import { ROADMAP_STAGES, escapeHtml, trophiesInStage } from './trophy-data.js';
+import { GRADE_LABELS, escapeHtml, nextUp, refChips, stageInfo, trophiesInStage } from './trophy-data.js';
 import { displayName } from './filters.js';
 
-function stageSectionHtml(stageEntry, trophies, progress) {
-  const inStage = trophiesInStage(trophies, stageEntry.stage);
-  const earnedCount = inStage.filter((trophy) => progress.earned[trophy.id]).length;
-  const pct = inStage.length ? Math.round((earnedCount / inStage.length) * 100) : 0;
-  const chips = inStage
-    .map((trophy) => {
-      const earned = Boolean(progress.earned[trophy.id]);
-      return (
-        `<button type="button" class="chip${earned ? ' is-earned' : ''}" data-action="select" data-goto="list" data-id="${trophy.id}">` +
-        `<span class="chip-dot grade-text-${trophy.grade}">●</span>${escapeHtml(displayName(trophy, progress))}` +
-        (earned ? ' ✓' : '') +
-        (trophy.missable ? ' <span class="badge badge-missable">Missable</span>' : '') +
-        '</button>'
-      );
-    })
+export function nextUpCards(trophies, progress) {
+  const upcoming = nextUp(trophies, (id) => progress.earned[id] === true, 4);
+  if (!upcoming.length) return '<p class="empty-note">Everything is earned. Platinum run complete.</p>';
+  return upcoming
+    .map(
+      (trophy, index) => `<button type="button" class="nextup-card" data-open-trophy="${trophy.id}">
+        <span class="nextup-rank">${index + 1}</span>
+        <span class="nextup-body">
+          <strong>${escapeHtml(displayName(trophy, progress))}</strong>
+          <span>${GRADE_LABELS[trophy.grade]} · Stage ${trophy.stage}${trophy.missable ? ' · <em class="nextup-warn">possibly missable — do it in Chapter 1</em>' : ''}${trophy.count ? ` · counter ${Math.min(progress.counters[trophy.id] ?? 0, trophy.count)}/${trophy.count}` : ''}</span>
+        </span>
+      </button>`,
+    )
     .join('');
-  const warning =
-    stageEntry.stage === 1
-      ? '<div class="missable-warning"><strong>Missable warning:</strong> Positive Mental Attitude starts here. ' +
-        'Meditate on the balcony at Jason\u2019s house during Chapter 1 — the spot is reported to vanish when the chapter ends. ' +
-        'It is the only missable trophy in the game; everything else can be cleaned up in free roam after the story.</div>'
-      : '';
-  return (
-    `<section class="roadmap-stage${earnedCount === inStage.length ? ' is-complete' : ''}">` +
-    '<header class="roadmap-stage-head">' +
-    `<span class="stage-number">${stageEntry.stage}</span>` +
-    `<h3>${escapeHtml(stageEntry.title)}</h3>` +
-    `<span class="stage-progress">${earnedCount} / ${inStage.length}</span>` +
-    '</header>' +
-    `<div class="counter-track stage-track"><div class="counter-fill" style="width:${pct}%"></div></div>` +
-    `<p class="stage-blurb">${escapeHtml(stageEntry.blurb)}</p>` +
-    warning +
-    `<div class="chip-row">${chips}</div>` +
-    '</section>'
-  );
 }
 
-export function renderRoadmap(container, trophies, progress) {
-  const sections = ROADMAP_STAGES.map((stageEntry) => stageSectionHtml(stageEntry, trophies, progress)).join('');
-  container.innerHTML =
-    '<div class="roadmap-intro"><h2>Roadmap to the Platinum</h2>' +
-    '<p>Seven stages, in the order the official trophy descriptions suggest: story first with the one missable kept safe, ' +
-    'then the character strands, the counted grinds, the crime and secret trophies, and the 100% completion Gold last. ' +
-    'One playthrough is enough, free roam continues after the story, and guides put the full list at roughly 200 hours.</p></div>' +
-    sections +
-    '<p class="roadmap-note">Cleanup rule of thumb: if a trophy is not a story trophy and not Positive Mental Attitude, ' +
-    'it can still be earned after the credits. Never use cheats on a trophy run — they disable trophies and saving.</p>';
+export function renderRoadmap(element, trophies, progress) {
+  const sections = trophies.length
+    ? [1, 2, 3, 4, 5, 6, 7]
+        .map((stage) => {
+          const info = stageInfo(stage);
+          const members = trophiesInStage(trophies, stage);
+          const done = members.filter((trophy) => progress.earned[trophy.id] === true).length;
+          const rows = members
+            .map((trophy) => {
+              const earned = progress.earned[trophy.id] === true;
+              return `<button type="button" class="road-row ${earned ? 'is-earned' : ''}" data-open-trophy="${trophy.id}">
+                <span class="grade-dot grade-${trophy.grade}"></span>
+                <span class="road-name">${escapeHtml(displayName(trophy, progress))}</span>
+                ${trophy.missable ? '<span class="badge badge-missable">Missable</span>' : ''}
+                ${(trophy.disputes ?? []).length ? '<span class="badge badge-dispute">Sources differ</span>' : ''}
+                <span class="road-state">${earned ? '✓ earned' : trophy.count ? `${Math.min(progress.counters[trophy.id] ?? 0, trophy.count)}/${trophy.count}` : 'to do'}</span>
+              </button>`;
+            })
+            .join('');
+          return `<section class="stage-block">
+            <header class="stage-head">
+              <span class="stage-num">${stage}</span>
+              <div>
+                <h3>${escapeHtml(info.title)}</h3>
+                <p>${escapeHtml(info.blurb)} ${refChips(info.refs)}</p>
+              </div>
+              <span class="stage-progress">${done}/${members.length}</span>
+            </header>
+            <div class="road-rows">${rows}</div>
+          </section>`;
+        })
+        .join('')
+    : '';
+  element.innerHTML = `
+    <section class="nextup-panel">
+      <h2>Next up <span>in roadmap order</span></h2>
+      <div class="nextup-grid">${nextUpCards(trophies, progress)}</div>
+    </section>
+    ${sections}`;
 }

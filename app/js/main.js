@@ -1,230 +1,217 @@
-// main.js — boots the Leonida Ledger: loads the trophy data, restores the
-// saved progress, wires the toolbar and the three views (checklist, detail
-// pane, roadmap), and applies the URL parameters used to stage views
-// (?view=roadmap, ?trophy=<id>, ?filter=<kind|grade>, ?spoiler=1,
-// ?sample=1).
+// main.js — boots the Leonida Ledger v2: loads the dataset, restores saved
+// progress, wires the toolbar and the four tabs (Tracker, Roadmap,
+// Missables, Sources), and applies the URL parameters used to stage views
+// (?tab=roadmap|missables|sources, ?trophy=<id>, ?sample=1, ?shield=0,
+// ?disputed=1).
 
-import { loadTrophies, trophyById } from './trophy-data.js';
+import { computeAudit, loadDataset, trophyById } from './trophy-data.js';
 import {
   applySampleProgress,
   exportProgress,
-  getCounter,
   getProgress,
   importProgress,
   loadProgress,
   onProgressChange,
   resetProgress,
-  setCounter,
-  setSetting,
+  setSpoilerShield,
+  stepCounter,
   toggleEarned,
 } from './progress-store.js';
-import { KIND_FILTERS, GRADE_FILTERS, applyFilters, createDefaultFilters } from './filters.js';
+import { GRADE_FILTERS, KIND_FILTERS, applyFilters, createDefaultFilters } from './filters.js';
 import { renderChecklist } from './render-checklist.js';
 import { renderDetail } from './render-detail.js';
-import { renderRoadmap } from './render-roadmap.js';
-import { computeStats, renderStats } from './render-stats.js';
+import { renderMissables } from './render-missables.js';
+import { nextUpCards, renderRoadmap } from './render-roadmap.js';
+import { renderSources } from './render-sources.js';
+import { computeStats, renderAuditBar, renderHeaderStats, renderStats } from './render-stats.js';
 
 const elements = {};
+let dataset = null;
 let trophies = [];
 let filters = createDefaultFilters();
-let selectedId = null;
-let view = 'list';
+let selectedId = 28;
+let activeTab = 'tracker';
 
 function cacheElements() {
   for (const id of [
-    'searchInput', 'kindChips', 'gradeChips', 'statusSelect', 'sortSelect',
-    'spoilerToggle', 'revealToggle', 'viewListBtn', 'viewRoadmapBtn',
+    'headerStats', 'auditBar', 'statsPanel', 'searchInput', 'statusSelect', 'sortSelect',
+    'shieldToggle', 'kindChips', 'gradeChips', 'disputedChip', 'resultCount',
     'sampleBtn', 'exportBtn', 'importBtn', 'importFile', 'resetBtn',
-    'statsPanel', 'checklist', 'detail', 'roadmap', 'listLayout', 'resultCount', 'headerStats',
+    'nextUp', 'checklist', 'detail',
+    'view-tracker', 'view-roadmap', 'view-missables', 'view-sources',
   ]) {
     elements[id] = document.getElementById(id);
   }
+  elements.tabButtons = [...document.querySelectorAll('.tab-btn')];
 }
 
 function buildChips() {
   elements.kindChips.innerHTML = KIND_FILTERS.map(
-    (entry) =>
-      `<button type="button" class="chip-btn" data-kind="${entry.key}">${entry.label}</button>`,
+    (entry) => `<button type="button" class="chip-btn ${entry.key === filters.kind ? 'is-active' : ''}" data-kind="${entry.key}">${entry.label}</button>`,
   ).join('');
   elements.gradeChips.innerHTML = GRADE_FILTERS.map(
-    (entry) =>
-      `<button type="button" class="chip-btn" data-grade="${entry.key}">${entry.label}</button>`,
+    (entry) => `<button type="button" class="chip-btn ${entry.key === filters.grade ? 'is-active' : ''}" data-grade="${entry.key}">${entry.label}</button>`,
   ).join('');
+  const disputedCount = trophies.filter((trophy) => (trophy.disputes ?? []).length).length;
+  elements.disputedChip.textContent = `Sources differ · ${disputedCount}`;
+  elements.disputedChip.classList.toggle('is-active', filters.disputedOnly);
+  elements.disputedChip.setAttribute('aria-pressed', String(filters.disputedOnly));
 }
 
-function syncToolbar() {
-  for (const btn of elements.kindChips.querySelectorAll('[data-kind]')) {
-    btn.classList.toggle('is-active', btn.dataset.kind === filters.kind);
-  }
-  for (const btn of elements.gradeChips.querySelectorAll('[data-grade]')) {
-    btn.classList.toggle('is-active', btn.dataset.grade === filters.grade);
-  }
-  elements.statusSelect.value = filters.status;
-  elements.sortSelect.value = filters.sort;
+function renderTracker() {
   const progress = getProgress();
-  elements.spoilerToggle.checked = Boolean(progress.settings.spoiler);
-  elements.revealToggle.checked = Boolean(progress.settings.revealHidden);
-  elements.viewListBtn.classList.toggle('is-active', view === 'list');
-  elements.viewRoadmapBtn.classList.toggle('is-active', view === 'roadmap');
-}
-
-function render() {
-  const progress = getProgress();
-  syncToolbar();
   const stats = computeStats(trophies, progress);
-  elements.headerStats.textContent =
-    `${stats.earned} / ${stats.total} earned · ${stats.percent}% · ${stats.points} pts`;
-  renderStats(elements.statsPanel, trophies, progress);
-
+  renderHeaderStats(elements.headerStats, stats);
+  renderStats(elements.statsPanel, stats);
+  elements.nextUp.innerHTML = nextUpCards(trophies, progress);
   const visible = applyFilters(trophies, filters, progress);
-  elements.resultCount.textContent =
-    view === 'list' ? `Showing ${visible.length} of ${trophies.length} trophies` : 'Roadmap — 7 stages';
-  elements.listLayout.hidden = view !== 'list';
-  elements.roadmap.hidden = view !== 'roadmap';
-  if (view === 'list') {
-    renderChecklist(elements.checklist, visible, progress, selectedId);
-  } else {
-    renderRoadmap(elements.roadmap, trophies, progress);
-  }
-  renderDetail(elements.detail, trophyById(trophies, selectedId), progress);
+  elements.resultCount.textContent = `${visible.length} of ${trophies.length} trophies shown`;
+  renderChecklist(elements.checklist, visible, progress, selectedId);
+  renderDetail(elements.detail, dataset, trophyById(trophies, selectedId), progress);
 }
 
-function selectTrophy(id, { gotoList = false } = {}) {
-  selectedId = Number(id);
-  if (gotoList) view = 'list';
-  render();
-  if (view === 'list') {
-    elements.detail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+function renderActiveTab() {
+  const progress = getProgress();
+  renderHeaderStats(elements.headerStats, computeStats(trophies, progress));
+  for (const tab of ['tracker', 'roadmap', 'missables', 'sources']) {
+    elements[`view-${tab}`].hidden = tab !== activeTab;
   }
+  for (const button of elements.tabButtons) {
+    button.classList.toggle('is-active', button.dataset.tab === activeTab);
+  }
+  if (activeTab === 'tracker') renderTracker();
+  if (activeTab === 'roadmap') {
+    renderRoadmap(elements['view-roadmap'], trophies, progress);
+    renderHeaderStats(elements.headerStats, computeStats(trophies, progress));
+  }
+  if (activeTab === 'missables') renderMissables(elements['view-missables'], dataset, progress);
+  if (activeTab === 'sources') renderSources(elements['view-sources'], dataset);
 }
 
-function handleAction(event) {
-  const target = event.target.closest('[data-action]');
-  if (!target) return;
-  const { action, id } = target.dataset;
-  const trophy = trophyById(trophies, id);
-  if (action === 'toggle') {
-    event.stopPropagation();
-    if (trophy) {
-      toggleEarned(trophy.id);
-      selectedId = trophy.id;
-    }
-  } else if (action === 'inc' || action === 'dec') {
-    event.stopPropagation();
-    if (trophy && trophy.count) {
-      const delta = action === 'inc' ? 1 : -1;
-      setCounter(trophy.id, getCounter(trophy.id) + delta, trophy.count);
-      selectedId = trophy.id;
-    }
-  } else if (action === 'select') {
-    selectTrophy(id, { gotoList: target.dataset.goto === 'list' });
-  } else if (action === 'unmask') {
-    if (trophy) {
-      if (trophy.hidden) setSetting('revealHidden', true);
-      if (trophy.kind === 'story') setSetting('spoiler', false);
-    }
-  }
+function selectTrophy(id, switchToTracker = false) {
+  if (trophyById(trophies, id)) selectedId = Number(id);
+  if (switchToTracker) activeTab = 'tracker';
+  renderActiveTab();
 }
 
 function wireEvents() {
-  document.body.addEventListener('click', handleAction);
-  elements.searchInput.addEventListener('input', () => {
-    filters.query = elements.searchInput.value.trim();
-    render();
+  elements.searchInput.addEventListener('input', (event) => {
+    filters.query = event.target.value;
+    renderTracker();
+  });
+  elements.statusSelect.addEventListener('change', (event) => {
+    filters.status = event.target.value;
+    renderTracker();
+  });
+  elements.sortSelect.addEventListener('change', (event) => {
+    filters.sort = event.target.value;
+    renderTracker();
+  });
+  elements.shieldToggle.addEventListener('change', (event) => {
+    setSpoilerShield(event.target.checked);
   });
   elements.kindChips.addEventListener('click', (event) => {
-    const btn = event.target.closest('[data-kind]');
-    if (!btn) return;
-    filters.kind = btn.dataset.kind;
-    view = 'list';
-    render();
+    const button = event.target.closest('[data-kind]');
+    if (!button) return;
+    filters.kind = button.dataset.kind;
+    buildChips();
+    renderTracker();
   });
   elements.gradeChips.addEventListener('click', (event) => {
-    const btn = event.target.closest('[data-grade]');
-    if (!btn) return;
-    filters.grade = btn.dataset.grade;
-    view = 'list';
-    render();
+    const button = event.target.closest('[data-grade]');
+    if (!button) return;
+    filters.grade = button.dataset.grade;
+    buildChips();
+    renderTracker();
   });
-  elements.statusSelect.addEventListener('change', () => {
-    filters.status = elements.statusSelect.value;
-    render();
+  elements.disputedChip.addEventListener('click', () => {
+    filters.disputedOnly = !filters.disputedOnly;
+    buildChips();
+    renderTracker();
   });
-  elements.sortSelect.addEventListener('change', () => {
-    filters.sort = elements.sortSelect.value;
-    render();
-  });
-  elements.spoilerToggle.addEventListener('change', () => {
-    setSetting('spoiler', elements.spoilerToggle.checked);
-  });
-  elements.revealToggle.addEventListener('change', () => {
-    setSetting('revealHidden', elements.revealToggle.checked);
-  });
-  elements.viewListBtn.addEventListener('click', () => {
-    view = 'list';
-    render();
-  });
-  elements.viewRoadmapBtn.addEventListener('click', () => {
-    view = 'roadmap';
-    render();
-  });
-  elements.sampleBtn.addEventListener('click', () => {
-    applySampleProgress();
-  });
+  elements.sampleBtn.addEventListener('click', () => applySampleProgress());
   elements.exportBtn.addEventListener('click', () => exportProgress());
   elements.importBtn.addEventListener('click', () => elements.importFile.click());
-  elements.importFile.addEventListener('change', async () => {
-    const file = elements.importFile.files?.[0];
+  elements.importFile.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
     try {
-      await importProgress(file);
-    } catch {
-      alert('That file could not be read as Leonida Ledger progress.');
+      importProgress(await file.text());
+    } catch (error) {
+      alert(error.message);
     }
-    elements.importFile.value = '';
+    event.target.value = '';
   });
   elements.resetBtn.addEventListener('click', () => {
-    if (confirm('Reset all saved progress, counters and settings?')) resetProgress();
+    if (confirm('Clear all saved progress and counters?')) resetProgress();
   });
-  onProgressChange(render);
+  for (const button of elements.tabButtons) {
+    button.addEventListener('click', () => {
+      activeTab = button.dataset.tab;
+      renderActiveTab();
+    });
+  }
+  elements.checklist.addEventListener('change', (event) => {
+    const input = event.target.closest('[data-earn]');
+    if (input) toggleEarned(trophyById(trophies, input.dataset.earn));
+  });
+  elements.checklist.addEventListener('click', (event) => {
+    if (event.target.closest('[data-earn]')) return;
+    const row = event.target.closest('[data-trophy-id]');
+    if (row) selectTrophy(row.dataset.trophyId);
+  });
+  document.body.addEventListener('click', (event) => {
+    const open = event.target.closest('[data-open-trophy]');
+    if (open) {
+      selectTrophy(open.dataset.openTrophy, true);
+      return;
+    }
+    const ref = event.target.closest('[data-ref]');
+    if (ref) {
+      activeTab = 'sources';
+      renderActiveTab();
+      return;
+    }
+    const earn = event.target.closest('[data-toggle-earn]');
+    if (earn) {
+      toggleEarned(trophyById(trophies, earn.dataset.toggleEarn));
+      return;
+    }
+    const counter = event.target.closest('[data-counter]');
+    if (counter) {
+      const trophy = trophyById(trophies, selectedId);
+      if (trophy) stepCounter(trophy, Number(counter.dataset.counter));
+    }
+  });
+  onProgressChange(() => renderActiveTab());
 }
 
 function applyUrlParams() {
   const params = new URLSearchParams(location.search);
   if (params.get('sample') === '1') applySampleProgress();
-  if (params.get('spoiler') === '1') setSetting('spoiler', true);
-  if (params.get('reveal') === '1') setSetting('revealHidden', true);
-  const filter = params.get('filter');
-  if (filter) {
-    if (KIND_FILTERS.some((entry) => entry.key === filter)) {
-      filters.kind = filter;
-    } else if (GRADE_FILTERS.some((entry) => entry.key === filter)) {
-      filters.grade = filter;
-    }
+  if (params.get('shield') === '0') {
+    setSpoilerShield(false);
+    elements.shieldToggle.checked = false;
   }
-  if (params.get('view') === 'roadmap') view = 'roadmap';
-  const trophyParam = params.get('trophy');
-  if (trophyParam && trophyById(trophies, trophyParam)) {
-    selectedId = Number(trophyParam);
-    if (params.get('view') !== 'roadmap') view = 'list';
-  }
+  if (params.get('disputed') === '1') filters.disputedOnly = true;
+  if (params.get('trophy')) selectedId = Number(params.get('trophy')) || selectedId;
+  const tab = params.get('tab');
+  if (['tracker', 'roadmap', 'missables', 'sources'].includes(tab)) activeTab = tab;
 }
 
 async function boot() {
   cacheElements();
-  buildChips();
   loadProgress();
-  try {
-    trophies = await loadTrophies();
-  } catch (error) {
-    elements.checklist.innerHTML =
-      `<div class="empty-state"><h3>Trophy data failed to load</h3><p>${error.message}</p></div>`;
-    return;
-  }
-  applyUrlParams();
-  if (selectedId === null && trophies.length) selectedId = trophies[0].id;
+  dataset = await loadDataset();
+  trophies = dataset.trophies;
+  renderAuditBar(elements.auditBar, computeAudit(dataset));
+  buildChips();
   wireEvents();
-  render();
+  applyUrlParams();
+  buildChips();
+  renderActiveTab();
 }
 
-boot();
+boot().catch((error) => {
+  document.getElementById('checklist').innerHTML = `<p class="empty-note">The ledger could not load: ${error.message}</p>`;
+});
