@@ -1,98 +1,73 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Leonida Ledger — GTA VI Trophy Guide &amp; Tracker</title>
+<title>Leonida Ledger — GTA VI Trophy Guide & Platinum Roadmap</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="top">
+<header class="topbar">
   <div class="brand">
     <h1>Leonida Ledger</h1>
-    <p class="sub">Grand Theft Auto VI — all 55 trophies, one playthrough. Every step cited, every disagreement shown both ways.</p>
+    <p class="tagline">Grand Theft Auto VI trophy guide &amp; platinum roadmap — every step cited, every disagreement shown both ways.</p>
   </div>
-  <div class="top-actions">
-    <button id="spoilerBtn" type="button" aria-pressed="true">Spoilers: hidden</button>
-    <button id="sampleBtn" type="button">Load sample progress</button>
+  <div class="progressbox">
+    <div class="progressline"><span id="earnedCount">0/55</span> trophies earned · <span id="earnedPct">0%</span></div>
+    <div class="progressbar"><div id="earnedBar"></div></div>
+    <div class="progressline small"><span id="collectCount">0</span> collectible targets tracked · <span id="gsCount">0</span>/1,000G</div>
+  </div>
+  <div class="controls">
+    <input id="search" type="search" placeholder="Search trophies, places, people…">
+    <select id="gradeFilter">
+      <option value="">All grades</option><option>Platinum</option><option>Gold</option>
+      <option>Silver</option><option>Bronze</option>
+    </select>
+    <select id="statusFilter">
+      <option value="">All statuses</option><option value="missing">Missing</option>
+      <option value="earned">Earned</option><option value="disputes">Sources differ</option>
+      <option value="collectible">Collectible</option><option value="risk">At risk / missable</option>
+    </select>
+    <label class="shield"><input type="checkbox" id="spoilerShield" checked> Spoiler shield</label>
+    <button id="exportBtn" type="button">Export</button>
+    <label class="importlab">Import<input id="importFile" type="file" accept="application/json" hidden></label>
+    <button id="resetBtn" type="button">Reset</button>
   </div>
 </header>
 
-<section class="audit" id="audit" aria-label="Audit bar">Loading the ledger…</section>
-<section class="stats" id="stats" aria-label="Your progress"></section>
+<section class="audit" aria-label="Verification audit">
+  <div class="auditrow" id="auditRow1"></div>
+  <div class="auditrow research" id="auditRow2"></div>
+</section>
 
-<nav class="tabs" aria-label="Sections">
-  <button type="button" data-tab="tracker" class="active">Tracker</button>
-  <button type="button" data-tab="roadmap">Roadmap</button>
-  <button type="button" data-tab="missables">Missables</button>
-  <button type="button" data-tab="sources">Sources</button>
+<nav class="tabs" id="tabs">
+  <button data-view="tracker" class="active" type="button">Tracker</button>
+  <button data-view="roadmap" type="button">Roadmap</button>
+  <button data-view="missables" type="button">Missables &amp; Windows</button>
+  <button data-view="sources" type="button">Sources</button>
 </nav>
 
 <main>
-  <section id="tab-tracker" class="tabpage active">
-    <div class="controls">
-      <input id="search" type="search" placeholder="Search trophies, guides, disputes…" aria-label="Search trophies">
-      <select id="kindFilter" aria-label="Filter by kind">
-        <option value="all">All kinds</option>
-        <option value="story">Story</option>
-        <option value="character">Character questlines</option>
-        <option value="activity">Activities</option>
-        <option value="partner">Partner</option>
-        <option value="robbery">Robberies</option>
-        <option value="explore">Exploration</option>
-        <option value="misc">One-offs</option>
-        <option value="platinum">Platinum</option>
-      </select>
-      <select id="gradeFilter" aria-label="Filter by grade">
-        <option value="all">All grades</option>
-        <option value="platinum">Platinum</option>
-        <option value="gold">Gold</option>
-        <option value="silver">Silver</option>
-        <option value="bronze">Bronze</option>
-      </select>
-      <select id="statusFilter" aria-label="Filter by status">
-        <option value="all">All statuses</option>
-        <option value="earned">Earned</option>
-        <option value="todo">Still to do</option>
-      </select>
-      <label class="check"><input id="disputedOnly" type="checkbox"> Disputed only</label>
-    </div>
-    <div class="tracker-grid">
-      <div class="list-wrap">
-        <p class="list-count" id="listCount"></p>
-        <ul class="trophy-list" id="trophyList"></ul>
-      </div>
-      <aside class="detail" id="detail" aria-label="Trophy detail">
-        <p class="detail-empty">Pick a trophy to see its guide, cited steps, counter and any dispute.</p>
+  <section id="view-tracker" class="view">
+    <div class="layout">
+      <aside class="leftcol">
+        <div class="nextup">
+          <h2>Next up <span class="hint">roadmap order</span></h2>
+          <ol id="nextUpList"></ol>
+        </div>
+        <div id="groupList"></div>
       </aside>
+      <article class="detail" id="detailPanel"></article>
     </div>
   </section>
-
-  <section id="tab-roadmap" class="tabpage">
-    <div class="nextup" id="nextup"></div>
-    <ol class="roadmap" id="roadmap"></ol>
-  </section>
-
-  <section id="tab-missables" class="tabpage">
-    <div id="missables"></div>
-  </section>
-
-  <section id="tab-sources" class="tabpage">
-    <p class="sources-note">Every guide step in this ledger cites at least one source below, read on 20 November 2026. Counts are computed live from the dataset.</p>
-    <table class="sources-table">
-      <thead><tr><th>Source</th><th>Read</th><th>Steps citing it</th><th>Trophies citing it</th></tr></thead>
-      <tbody id="sourcesBody"></tbody>
-    </table>
-  </section>
+  <section id="view-roadmap" class="view hidden"></section>
+  <section id="view-missables" class="view hidden"></section>
+  <section id="view-sources" class="view hidden"></section>
 </main>
 
-<footer class="foot">
-  <div class="foot-actions">
-    <button id="exportBtn" type="button">Export progress</button>
-    <label class="import-label">Import progress <input id="importFile" type="file" accept="application/json"></label>
-    <button id="resetBtn" type="button">Reset progress</button>
-  </div>
-  <p class="foot-note">Names and descriptions are the official list as published 18 November 2026. Guide text is written in our own words from the sources listed. Methods for five hidden trophies are still unconfirmed in every guide we read — they are marked as such, not guessed.</p>
+<footer>
+  <p>Leonida Ledger · Built from 12 published GTA VI trophy guides, all read in full on <span id="readDate">20 Nov 2026</span>.
+  Where the sources disagree, this guide shows both sides and makes its own call. Progress is saved locally in your browser.</p>
 </footer>
 
 <script type="module" src="app.js"></script>

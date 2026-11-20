@@ -1,38 +1,54 @@
-# Leonida Ledger — GTA VI Trophy Guide & Tracker
+# Leonida Ledger — GTA VI Trophy Guide
 
-[![GTA 6 Trophy Guide](https://make.fun/badge/gta6-trophy-guide-01.svg)](https://make.fun/c/gta6-trophy-guide-01/)
-[![Rank](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/rank.svg)](https://make.fun/c/gta6-trophy-guide-01/)
-[![Reward](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/reward.svg)](https://make.fun/c/gta6-trophy-guide-01/)
+[![make.fun bounty](https://make.fun/badge/gta6-trophy-guide-01.svg)](https://make.fun/bounty/gta6-trophy-guide-01)
+[![rank](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/rank.svg)](https://make.fun/bounty/gta6-trophy-guide-01)
+[![reward](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/reward.svg)](https://make.fun/bounty/gta6-trophy-guide-01)
 
-A complete Grand Theft Auto VI trophy guide and tracker for the [gta6-trophy-guide-01 bounty](https://make.fun/c/gta6-trophy-guide-01/): all 55 trophies (1 Platinum, 2 Gold, 6 Silver, 46 Bronze; 28 hidden), a 7-stage roadmap to the Platinum, a Missables tab, and a Sources tab. Fully static and offline — open `app/index.html`, no build step, nothing loaded over the network.
+Entry for the make.fun bounty [gta6-trophy-guide-01](https://make.fun/bounty/gta6-trophy-guide-01).
+
+A complete, evidence-first trophy guide for Grand Theft Auto VI (PS5 / Xbox Series X|S):
+all **55 trophies** — 1 Platinum, 2 Gold, 6 Silver, 46 Bronze, 28 hidden, 1,000 Gamerscore —
+researched from **12 published guides read in full** and rebuilt as a working tracker app.
 
 ## What is inside
 
-- **Tracker** — checklist with progress saved locally, search, filters (kind, grade, status, disputed-only), a spoiler shield over the 28 hidden trophies, a collectible counter with a stepper on every counted trophy, and a detail pane per trophy: a short guide, numbered steps with per-step citations, a sources rail, and a "Sources differ" box wherever the guides disagree.
-- **Roadmap** — 7 stages in order with a Next-up rail that always points at the first unfinished stage.
-- **Missables** — leads with Positive Mental Attitude, the one trophy that can lock you out: Lucia's Chapter 1 balcony meditation, plus the timed Yago race and save discipline (no mission replay).
-- **Sources** — the 12 guides this ledger was written from, read 20 November 2026, with live counts of how many steps cite each one.
-- **Progress tools** — export, import, reset, and a sample-progress loader.
-
-## Audit (computed live from the dataset)
-
-- 55 trophies, grades 1 / 2 / 6 / 46, 28 hidden
-- 420 guide steps — 420/420 cited, 418 backed by 2+ sources
-- 33 disputes across 25 trophies, each showing both sides with citations and an explicit "our call"
-- 12 sources read: PowerPyx, GTABase, KeenGamer, EGamers, Insider Gaming, HowToVideoGame, Exophase, OutputLag, Push Square, GTA Zone, GamesFuze, GTAScoop
-
-Five hidden trophies have no confirmed unlock method in any guide we read (In The Beginning…, Capital Offense, Bad Luck, I Guess, The Truth Is Out There, Ten Pin). They are marked unconfirmed with the best leads we found — never guessed.
+- **501 walkthrough steps, every one cited** with numbered sources — 430 of them backed by
+  two or more independent guides. Steps are written as actions (go here, talk to them, open
+  this menu), never as bare facts.
+- **48 source disputes shown both ways** across 46 trophies: wherever the guides disagree —
+  a trophy target, a method, an unconfirmed trigger — the detail panel carries a
+  SOURCES DIFFER box with Side A, Side B and our call.
+- **A two-row audit bar** on the first screen: the official-list verification (55/55 names
+  and descriptions, grade split, hidden count) and the research depth behind it (pages and
+  sites read, read date, 1 possibly missable, at-risk windows, unconfirmed count).
+- **Roadmap-first tracker**: trophies are grouped by the seven roadmap stages with per-stage
+  progress, plus a “Next up” rail that always points at the earliest unfinished trophy.
+- **Spoiler shield on by default** — hidden trophies stay masked until you reveal them.
+- **Collectible counters** with progress bars: 647 countable targets (stunts, scans,
+  meditations, card sets, challenges, vaults and more) plus the two money grinds.
+- Checklist with locally saved progress, counter values, search and filters
+  (grade / status / disputes / collectible / at-risk), and progress export & import.
+- A dedicated **Missables & Windows** view: the single possibly-missable trophy
+  (Positive Mental Attitude), the six at-risk quest windows, and the six trophies whose
+  triggers are still unconfirmed.
+- A **Sources** tab that lists all 12 numbered sources with page title, URL, read date,
+  and how many claims each one backs in this guide.
 
 ## Run it
 
 ```sh
 node serve.ts        # serves app/ at http://localhost:8080
+node main.ts         # validates the dataset, then writes the hand-in to /output
+MAKEFUN_OUTPUT_DIR=out node main.ts   # same, into ./out outside the grader
 ```
 
-## Hand it in
+`main.ts` refuses to hand in a guide that breaks its own advertised numbers: it re-checks
+the 55-trophy invariants, the citation and dispute floors, and the scorer's size caps
+before copying anything.
 
-```sh
-mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-```
+## Layout
 
-`main.ts` validates the dataset first (55 trophies, grade split, 28 hidden, every step cited, every dispute showing both sides, all 12 sources used, roadmap covering all 55 exactly once, source bytes inside the dossier text cap, 4 screenshots inside their caps), then copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the kit's `buildDossier`.
+- `app/` — the static guide app (ES modules, no build step, loads nothing over the network)
+- `app/data/trophies.json` — the full dataset: trophies, steps, citations, disputes, counters, sources
+- `screenshots/` — four 1280×800 JPEG views of the app; `shots.json` says what each one shows
+- `vendor/makefun-frontend.ts` — the vendored make.fun library that writes `dossier.json`
