@@ -65,9 +65,28 @@ for (const t of trophies) {
     disputeTotal++;
     check(d.q && d.a && d.b && d.call, `${t.name}: dispute missing a side or the call`);
     check((d.ac || []).length >= 1 && (d.bc || []).length >= 1, `${t.name}: dispute side without citation`);
+    check([d.a, d.b, d.call].every((v) => typeof v === 'string' && v.trim().length >= 10),
+      `${t.name}: dispute side or call is only a stub`);
+    check([...(d.ac || []), ...(d.bc || [])].every((n) => Number.isInteger(n) && n >= 1 && n <= sources.length),
+      `${t.name}: dispute citation outside 1..${sources.length}`);
   }
   if (t.ctr) check(Number.isFinite(t.ctr.target) && t.ctr.target > 0 && t.ctr.label, `${t.name}: malformed counter`);
 }
+// Every listed source must earn its place: a source nothing cites is dead
+// weight, and a description citation must point at a real source.
+const citedSources = new Set();
+for (const t of trophies) {
+  for (const n of t.dc || []) citedSources.add(n);
+  for (const s of t.steps) for (const n of s.c || []) citedSources.add(n);
+  for (const d of t.disputes || []) {
+    for (const n of d.ac || []) citedSources.add(n);
+    for (const n of d.bc || []) citedSources.add(n);
+  }
+}
+check(sources.every((s) => citedSources.has(s.n)), 'a listed source is never cited anywhere in the guide');
+check(trophies.every((t) => (t.dc || []).every((n) => Number.isInteger(n) && n >= 1 && n <= sources.length)),
+  'a description citation falls outside the source list');
+
 check(stepTotal >= 420, `only ${stepTotal} guide steps, floor is 420`);
 check(stepMulti >= 418, `only ${stepMulti} steps backed by 2+ sources, floor is 418`);
 check(disputeTotal >= 33, `only ${disputeTotal} disputes, floor is 33`);
