@@ -1,64 +1,35 @@
-# Leonida Ledger — GTA VI Trophy Guide
+# Leonida Ledger — GTA VI Trophy Guide & Tracker
 
-[![make.fun bounty](https://make.fun/badge/gta6-trophy-guide-01.svg)](https://make.fun/competitions/gta6-trophy-guide-01)
-[![rank](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/rank.svg)](https://make.fun/competitions/gta6-trophy-guide-01)
-[![reward](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/reward.svg)](https://make.fun/competitions/gta6-trophy-guide-01)
+![make.fun bounty](https://make.fun/badge/gta6-trophy-guide-01.svg)
+![rank](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/rank.svg)
+![reward](https://make.fun/badge/gta6-trophy-guide-01/surebe/gta6-trophy-guide/reward.svg)
 
-A complete, fully cited trophy guide for Grand Theft Auto VI, built for the
-[make.fun GTA 6 Trophy Guide bounty](https://make.fun/competitions/gta6-trophy-guide-01).
+An offline trophy guide and tracker for all **55 Grand Theft Auto VI trophies** on PlayStation 5, built for the make.fun bounty [gta6-trophy-guide-01](https://make.fun/c/gta6-trophy-guide-01).
+
+**The first screen is the point.** The app opens on **Positive Mental Attitude** — the list's only missable trophy, and a visible one — with its full walkthrough, numbered citations and SOURCES DIFFER box readable at once. The spoiler shield is ON by default, and it can never blur the opening view, because the default trophy is not hidden (the build script refuses to hand in a guide whose default trophy is hidden).
 
 ## What is inside
 
-- **All 55 trophies, verified**: 1 Platinum / 2 Gold / 6 Silver / 46 Bronze,
-  28 hidden, exactly 1,000 Gamerscore — cross-checked against 16 published
-  lists and guides, every one read in full (see the Sources tab in the app).
-- **596 walkthrough steps, 100% cited** — every step carries numbered
-  citations `[n]`, and every step is backed by 2+ sources. Steps are written
-  as a walkthrough: one action each, with the mission, NPC, place, time or
-  menu path named.
-- **60 "SOURCES DIFFER" boxes** printed on the trophies themselves: where the
-  published guides disagree, both sides are shown with citations, plus our
-  call. No disagreement is silently hidden.
-- **Two-row audit bar, computed from the data**: list verification (trophy
-  count, grade split, Gamerscore, hidden count, step and citation coverage,
-  dispute count) and research depth (pages/sites read with date, at-risk
-  strands, unconfirmed trophies, source coverage, 1,175 tracked collectible
-  targets).
-- **Roadmap-first tracker**: trophies grouped by the 7 roadmap stages with
-  per-stage progress and a "Next Up" rail; detail panel with the official
-  description quote, badges (MISSABLE / AT RISK / UNCONFIRMED / SOURCES
-  DIFFER / COLLECTIBLE / stage), collectible progress bars, per-step
-  checklists, and a per-trophy source rail.
-- **Spoiler shield ON by default**, search and grade filters, Roadmap /
-  Missables & Risk / Sources tabs, progress saved in localStorage, and
-  export/import of your progress as JSON.
-- **Exactly one missable trophy** — Positive Mental Attitude — flagged
-  everywhere it matters, with the Chapter 1 balcony meditation called out in
-  the roadmap's first stage.
+- **Verified list:** 55 trophies — 1 Platinum / 2 Gold / 6 Silver / 46 Bronze, 28 hidden, exactly 1,000 Gamerscore, one missable.
+- **613 walkthrough steps, every one cited** with numbered `[n]` source references; 519 steps are backed by two or more sources.
+- **58 source disputes across all 55 trophies**, each shown in the main detail flow as a SOURCES DIFFER box: Side A and Side B, both cited, plus our call.
+- **16 guide pages read in full across 15 sites** (PowerPyx, GTABase, KeenGamer, Push Square, EGamers, Insider Gaming ×2, OutputLag, HowToVideoGame, GamesFuze, Press Start, GTA Zone, GTAScoop, TrueAchievements, GameMapa, games.gg) — the Sources tab counts every claim from the citation data itself.
+- Tracker in roadmap order with per-stage progress and a **Next Up** rail; Roadmap, Missables & Risks, and Sources tabs; search and grade/state filters.
+- Collectible counters in the header and per trophy with progress bars and steppers; checklist progress saved in `localStorage`, with export/import as JSON.
+- Official trophy descriptions quoted as PlayStation publishes them, each with its own citations; badges for MISSABLE, AT RISK, UNCONFIRMED, SOURCES DIFFER, COLLECTIBLE and HIDDEN trophies.
 
 ## Run it
 
+Open `app/index.html` in a browser, or serve the folder:
+
 ```
-node main.ts            # validates the data, copies app/ + screenshots/, writes dossier.json
+node serve.ts   # then open http://localhost:8080
 ```
 
-Set `MAKEFUN_OUTPUT_DIR` to choose the output directory (default `/output`).
-The program validates every floor before emitting: trophy composition,
-Gamerscore, step citation coverage, dispute coverage, source coverage and
-the app text budget — and exits non-zero if any check fails. Two consecutive
-runs produce byte-identical `dossier.json`.
+## Hand it in
 
-To browse the guide locally, serve the `app/` folder with any static file
-server and open `index.html`. The app is fully offline: it loads nothing
-from the network.
+```
+mkdir -p /tmp/out && MAKEFUN_OUTPUT_DIR=/tmp/out node main.ts
+```
 
-## Sources
-
-PowerPyx, GTABase, KeenGamer, Push Square, EGamers, Insider Gaming,
-OutputLag, HowToVideoGame, GamesFuze, Press Start, GTA Zone, GTAScoop,
-TrueAchievements, GameMapa, games.gg and Radio Times — each read in full on
-2026-11-21 and cited by number throughout the guide. The app's Sources tab
-lists every page with its URL, read date, and an honest claim count counted
-from the guide's own data.
-
-Fan-made guide. Not affiliated with Rockstar Games or Take-Two Interactive.
+`main.ts` re-validates the data (counts, floors, citation integrity, and the not-hidden default rule) before copying `app/` and `screenshots/` to the output directory and writing `dossier.json` with the vendored make.fun library.

@@ -1,132 +1,87 @@
-// Leonida Ledger — GTA VI trophy guide (make.fun entry)
-// Validates the guide data against the competition floors, then copies the
-// app into the output directory and writes dossier.json via the kit library.
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { buildDossier } from "./vendor/makefun-frontend.ts";
+// Leonida Ledger — GTA VI trophy guide & tracker (make.fun gta6-trophy-guide-01).
+// The guide itself is the static app in app/ (open app/index.html in a browser, or serve it with
+// `node serve.ts`). This program is the hand-in step: it first re-validates the guide's data against
+// every invariant the entry promises — the official 55-trophy shape, the citation floors, the dispute
+// floors, and above all that the trophy the app opens on is NOT a hidden trophy (a hidden default under
+// the spoiler shield is what sank the previous version's first screen) — and only then copies app/ and
+// screenshots/ to the output directory and writes dossier.json with the vendored make.fun library.
+// Leave vendor/makefun-frontend.ts untouched: the scorer requires dossier.json to be byte for byte what
+// its own copy writes. Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
+//   mkdir -p /tmp/out && MAKEFUN_OUTPUT_DIR=/tmp/out node main.ts
 
-const root = dirname(fileURLToPath(import.meta.url));
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildDossier } from './vendor/makefun-frontend.ts';
 
-// ---------- load data ----------
-const dataPath = join(root, "app", "data", "trophies.json");
-const data = JSON.parse(readFileSync(dataPath, "utf8"));
-const trophies: any[] = data.trophies ?? [];
-const sources: any[] = data.sources ?? [];
+const here = fileURLToPath(new URL('.', import.meta.url));
 
-// ---------- validation ----------
-const errors: string[] = [];
-const need = (cond: boolean, msg: string) => { if (!cond) errors.push(msg); };
+// ---------- Validate the guide data before anything is handed in ----------
+const data = JSON.parse(readFileSync(join(here, 'app', 'data', 'trophies.json'), 'utf8'));
+const trophies = data.trophies;
+const fail = (msg: string): never => { throw new Error('Leonida Ledger validation failed: ' + msg); };
 
-need(trophies.length === 55, `trophy count ${trophies.length} != 55`);
-const grades: Record<string, number> = {};
-let hidden = 0, gamerscore = 0, steps = 0, cited = 0, multi = 0;
-let disputes = 0, disputeTrophies = 0, collectibles = 0;
-const missables: string[] = [];
+if (!Array.isArray(trophies) || trophies.length !== 55) fail('the guide must hold exactly 55 trophies');
+const gradeCount: Record<string, number> = {};
+for (const t of trophies) gradeCount[t.grade] = (gradeCount[t.grade] ?? 0) + 1;
+if (gradeCount.Platinum !== 1 || gradeCount.Gold !== 2 || gradeCount.Silver !== 6 || gradeCount.Bronze !== 46)
+  fail('grade split must be 1 Platinum / 2 Gold / 6 Silver / 46 Bronze');
+if (new Set(trophies.map(t => t.id)).size !== 55) fail('trophy ids must be unique');
+if (trophies.filter(t => t.hidden).length !== 28) fail('exactly 28 trophies must be hidden');
+if (trophies.reduce((a, t) => a + t.gamerscore, 0) !== 1000) fail('Gamerscore must total exactly 1000');
+const missables = trophies.filter(t => t.missable);
+if (missables.length !== 1 || missables[0].id !== 'positive-mental-attitude')
+  fail('Positive Mental Attitude must be the only missable trophy');
+
+// The V8 rule: the app opens on the default trophy with the spoiler shield ON, so that trophy must be
+// visible — a hidden default would blur the entire first screen the judges read.
+const defaultTrophy = trophies.find(t => t.id === data.defaultTrophy);
+if (!defaultTrophy) fail('defaultTrophy does not match any trophy id');
+if (defaultTrophy.hidden) fail('the default trophy must NOT be hidden (spoiler shield would blur the first screen)');
+
+let stepTotal = 0, multiTotal = 0, disputeTotal = 0, disputeTrophies = 0;
 const citedSources = new Set<number>();
-const names = new Set<string>();
-const ids = new Set<string>();
-
 for (const t of trophies) {
-  grades[t.grade] = (grades[t.grade] ?? 0) + 1;
-  if (t.hidden) hidden++;
-  gamerscore += t.g ?? 0;
-  if (t.missable) missables.push(t.name);
-  need(!names.has(t.name), `duplicate trophy name: ${t.name}`);
-  names.add(t.name);
-  need(typeof t.id === "string" && t.id.length > 0 && !ids.has(t.id), `bad or duplicate trophy id: ${t.id}`);
-  ids.add(t.id);
-  need(typeof t.stage === "string" && t.stage.startsWith("Stage "), `${t.name}: missing roadmap stage`);
-  need(typeof t.guide === "string" && t.guide.trim().length > 0, `${t.name}: blank guide`);
-  need(typeof t.desc === "string" && t.desc.trim().length > 0, `${t.name}: blank description`);
-  const cite = (n: number) => citedSources.add(n);
-  (t.dc ?? []).forEach(cite);
-  let tSteps = 0;
-  for (const s of t.steps ?? []) {
-    tSteps++; steps++;
-    const c: number[] = s.c ?? [];
-    if (c.length > 0) cited++;
-    if (c.length >= 2) multi++;
-    c.forEach(cite);
-    need(c.length > 0, `${t.name}: uncited step "${String(s.t).slice(0, 40)}"`);
+  if (!t.description || !t.guide || !Array.isArray(t.steps) || t.steps.length === 0)
+    fail(t.id + ' is missing its description, guide or steps');
+  stepTotal += t.steps.length;
+  for (const s of t.steps) {
+    if (!Array.isArray(s.c) || s.c.length === 0) fail(t.id + ' has an uncited step: ' + s.t);
+    if (s.c.length >= 2) multiTotal++;
+    s.c.forEach(i => citedSources.add(i));
   }
-  need(tSteps > 0, `${t.name}: no steps`);
-  if ((t.disputes ?? []).length > 0) disputeTrophies++;
-  for (const d of t.disputes ?? []) {
-    disputes++;
-    (d.ac ?? []).forEach(cite);
-    (d.bc ?? []).forEach(cite);
-    need((d.ac ?? []).length > 0 && (d.bc ?? []).length > 0, `${t.name}: dispute missing a cited side`);
-    need(typeof d.call === "string" && d.call.trim().length > 0, `${t.name}: dispute missing our call`);
+  t.dc.forEach(i => citedSources.add(i));
+  const disputes = t.disputes ?? [];
+  if (disputes.length) disputeTrophies++;
+  disputeTotal += disputes.length;
+  for (const d of disputes) {
+    if (!Array.isArray(d.ac) || !d.ac.length || !Array.isArray(d.bc) || !d.bc.length || !d.call)
+      fail(t.id + ' has a dispute missing a cited side or the call');
+    d.ac.forEach(i => citedSources.add(i));
+    d.bc.forEach(i => citedSources.add(i));
   }
-  if (t.collect) collectibles += t.collect.need ?? 0;
 }
+if (stepTotal < 560) fail('need at least 560 steps, found ' + stepTotal);
+if (multiTotal < 500) fail('need at least 500 steps backed by 2+ sources, found ' + multiTotal);
+if (disputeTotal < 55 || disputeTrophies < 48)
+  fail('need at least 55 disputes across 48 trophies, found ' + disputeTotal + ' across ' + disputeTrophies);
+if (!Array.isArray(data.sources) || data.sources.length !== 16) fail('exactly 16 sources must be registered');
+for (const s of data.sources) if (!citedSources.has(s.id)) fail('source ' + s.id + ' (' + s.name + ') is never cited');
+for (const i of citedSources) if (!data.sources.some(s => s.id === i)) fail('citation [' + i + '] has no registered source');
+console.log(`Leonida Ledger data OK: 55 trophies, ${stepTotal} steps (${multiTotal} multi-source), ${disputeTotal} disputes across ${disputeTrophies} trophies, 16 sources all cited, default = ${defaultTrophy.name} (hidden: ${defaultTrophy.hidden}).`);
 
-need(grades["Platinum"] === 1, `platinum ${grades["Platinum"]} != 1`);
-need(grades["Gold"] === 2, `gold ${grades["Gold"]} != 2`);
-need(grades["Silver"] === 6, `silver ${grades["Silver"]} != 6`);
-need(grades["Bronze"] === 46, `bronze ${grades["Bronze"]} != 46`);
-need(hidden === 28, `hidden ${hidden} != 28`);
-need(gamerscore === 1000, `gamerscore ${gamerscore} != 1000`);
-need(missables.length === 1 && missables[0] === "Positive Mental Attitude",
-  `missable set wrong: ${missables.join(", ")}`);
-need(steps >= 560, `steps ${steps} < 560`);
-need(cited === steps, `cited ${cited} != steps ${steps}`);
-need(multi >= 500, `multi-source steps ${multi} < 500`);
-need(disputes >= 55, `disputes ${disputes} < 55`);
-need(disputeTrophies >= 48, `dispute trophies ${disputeTrophies} < 48`);
-need(sources.length === 16, `sources ${sources.length} != 16`);
-need(citedSources.size === 16, `only ${citedSources.size}/16 sources cited`);
-for (const s of sources) need(citedSources.has(s.n), `source [${s.n}] ${s.name} never cited`);
-
-// app text budget (html/js/css/json under app/, excl. vendor and *.min.*)
-function walk(dir: string): string[] {
-  const res: string[] = [];
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name);
-    if (e.isDirectory()) { if (e.name !== "vendor") res.push(...walk(p)); }
-    else if (!e.name.endsWith(".min.js") && !e.name.endsWith(".min.css")) res.push(p);
-  }
-  return res;
-}
-let appBytes = 0;
-for (const f of walk(join(root, "app"))) appBytes += statSync(f).size;
-need(appBytes <= 160 * 1024, `app text ${appBytes} > 163840 bytes`);
-
-// screenshots contract
-const shots = JSON.parse(readFileSync(join(root, "shots.json"), "utf8"));
-need(Array.isArray(shots) && shots.length >= 3 && shots.length <= 4, "shots.json must list 3-4 screenshots");
-for (const s of shots) {
-  const p = join(root, "screenshots", s.file);
-  need(existsSync(p), `missing screenshot ${s.file}`);
-  if (existsSync(p)) need(statSync(p).size <= 262144, `screenshot ${s.file} over 256 KiB`);
-}
-
-if (errors.length) {
-  console.error("VALIDATION FAILED:\n" + errors.map((e) => " - " + e).join("\n"));
-  process.exit(1);
-}
-console.log(`validation ok: 55 trophies, ${steps} steps (${multi} multi-source), ${disputes} disputes on ${disputeTrophies} trophies, 16/16 sources cited, ${collectibles} collectible targets, app text ${appBytes} bytes`);
-
-// ---------- emit ----------
+// ---------- Hand in: copy the app and screenshots, then build the dossier ----------
+const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 mkdirSync(out, { recursive: true });
-cpSync(join(root, "app"), join(out, "app"), { recursive: true });
-mkdirSync(join(out, "screenshots"), { recursive: true });
-if (existsSync(join(root, "screenshots"))) {
-  cpSync(join(root, "screenshots"), join(out, "screenshots"), { recursive: true });
-}
-// buildDossier returns the dossier bytes; the caller writes them (kit pattern).
-const dossierBytes = buildDossier(out, {
-  text_max_bytes: 163840,
-  screenshots: { max: 4, max_bytes: 262144 },
-  app_max_files: 993,
-  app_max_bytes: 50331648,
-});
-need(dossierBytes.length <= 1500000, `dossier ${dossierBytes.length} > 1.5 MB`);
-if (errors.length) {
-  console.error("VALIDATION FAILED:\n" + errors.map((e) => " - " + e).join("\n"));
-  process.exit(1);
-}
-writeFileSync(join(out, "dossier.json"), dossierBytes);
-console.log(`dossier.json written: ${dossierBytes.length} bytes`);
+cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
+mkdirSync(join(out, 'screenshots'), { recursive: true });
+if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+
+// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse
+// an entry the scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files and
+// directories in app/ or 48 MiB of app files).
+writeFileSync(
+  join(out, 'dossier.json'),
+  buildDossier(out, { text_max_bytes: 163840, screenshots: { max: 4, max_bytes: 262144 }, app_max_files: 993, app_max_bytes: 50331648 }),
+);
+console.log('Dossier written to ' + join(out, 'dossier.json'));

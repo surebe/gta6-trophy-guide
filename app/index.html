@@ -3,75 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Leonida Ledger — GTA VI Trophy Guide</title>
+<title>Leonida Ledger — GTA VI Trophy Guide &amp; Tracker</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-mark">LL</div>
-    <div>
-      <h1>Leonida Ledger</h1>
-      <p class="tagline">Grand Theft Auto VI — the complete trophy ledger: every step cited, every disagreement printed.</p>
-    </div>
+<header>
+  <div class="hrow">
+    <h1>Leonida Ledger</h1>
+    <span class="sub">GTA VI Trophy Guide &amp; Tracker · PS5 · all 55 trophies, every step cited</span>
+    <span id="collChip" class="chip" title="Collectible progress across every counter in the guide"></span>
+    <label class="shieldLab">Spoiler shield <input type="checkbox" id="shieldTgl" checked></label>
+    <button id="expBtn" type="button">Export progress</button>
+    <label class="impLab">Import<input type="file" id="impFile" accept=".json" hidden></label>
   </div>
-  <div class="collect-total" id="collectTotal" title="Tracked targets across all trophies"></div>
+  <div id="auditBar" class="audit"></div>
+  <nav class="tabbar">
+    <button type="button" data-tab="tracker" class="on">Tracker</button>
+    <button type="button" data-tab="roadmap">Roadmap</button>
+    <button type="button" data-tab="missables">Missables &amp; Risks</button>
+    <button type="button" data-tab="sources">Sources</button>
+    <input id="qBox" type="search" placeholder="Search trophies, missions, NPCs, places…">
+    <select id="gradeSel"><option value="">All grades</option><option>Platinum</option><option>Gold</option><option>Silver</option><option>Bronze</option></select>
+    <select id="doneSel"><option value="">All states</option><option value="todo">To do</option><option value="done">Done</option></select>
+    <span id="progLab" class="prog"></span>
+  </nav>
+  <div id="nextUp" class="nextup"></div>
 </header>
-
-<section class="audit" id="auditBar" aria-label="Verification audit"></section>
-<section class="audit audit2" id="auditBar2" aria-label="Research depth audit"></section>
-
-<nav class="tabs" role="tablist">
-  <button class="tab active" data-tab="tracker" role="tab">Tracker</button>
-  <button class="tab" data-tab="roadmap" role="tab">Roadmap</button>
-  <button class="tab" data-tab="missables" role="tab">Missables &amp; Risk</button>
-  <button class="tab" data-tab="sources" role="tab">Sources</button>
-</nav>
-
 <main>
-  <section id="view-tracker" class="view active">
-    <div class="layout">
-      <div class="listcol">
-        <div class="controls">
-          <input id="search" type="search" placeholder="Search trophies, steps, places…" aria-label="Search trophies">
-          <select id="gradeFilter" aria-label="Filter by grade">
-            <option value="">All grades</option>
-            <option>Platinum</option><option>Gold</option><option>Silver</option><option>Bronze</option>
-          </select>
-          <label class="chk"><input type="checkbox" id="hideDone"> Hide done</label>
-          <label class="chk"><input type="checkbox" id="shieldToggle"> Spoiler shield</label>
-        </div>
-        <div class="overall"><div class="overall-bar"><div id="overallFill"></div></div><span id="overallText"></span></div>
-        <div id="nextUp" class="nextup"></div>
-        <div id="trophyList"></div>
-      </div>
-      <article class="detail" id="detail" aria-live="polite"></article>
-    </div>
-  </section>
-
-  <section id="view-roadmap" class="view">
-    <div id="roadmapBody"></div>
-  </section>
-
-  <section id="view-missables" class="view">
-    <div id="missBody"></div>
-  </section>
-
-  <section id="view-sources" class="view">
-    <p class="srcnote">Every source below was read in full on the date shown. Claim counts are counted from this guide's own data — each numbered citation in a step, description or dispute side counts once.</p>
-    <div id="sourceList"></div>
-    <div class="iobar">
-      <button id="exportBtn" type="button">Export progress (JSON)</button>
-      <label class="importlab">Import progress <input id="importFile" type="file" accept="application/json"></label>
-      <button id="resetBtn" type="button">Reset all progress</button>
-    </div>
-  </section>
+  <section id="listCol" aria-label="Trophy list"></section>
+  <section id="detailCol" aria-label="Trophy detail"></section>
 </main>
-
-<footer>
-  <p>Fan-made guide. Not affiliated with Rockstar Games or Take-Two Interactive. Trophy names and descriptions are quoted from the published lists cited under Sources.</p>
-</footer>
-
 <script src="app.js"></script>
 </body>
 </html>
